@@ -6,18 +6,19 @@ from minecraft_query import MinecraftQuery
 
 __author__ = 'Jesse S'
 
-logging.basicConfig(format="[%(asctime)s] [%(levelname)8s] --- %(message)s (%(filename)s:%(lineno)s)", level=logging.ERROR)
+logging.basicConfig(filename="heartBeat.log", format="[%(asctime)s] [%(levelname)8s] --- %(message)s (%(filename)s:%(lineno)s)", level=logging.INFO)
 
 
 def main():
 	address = "localhost"
 	port = 25565
+	logging.info("Starting monitor")
 	while True:
-		logging.info("Checking Server @ " + address + ":" + str(port))
+		logging.debug("Checking Server @ " + address + ":" + str(port))
 		try:
 			query = MinecraftQuery(address, port)
 			query.get_status()
-			logging.info("Server is UP!")
+			logging.debug("Server is UP!")
 		except timeout:
 			logging.error("Server is Down @ " + address + ":" + str(port))
 			startServer("MagicFarm")
