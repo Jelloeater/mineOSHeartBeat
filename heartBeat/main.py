@@ -6,7 +6,7 @@ from minecraft_query import MinecraftQuery
 
 __author__ = 'Jesse S'
 
-logging.basicConfig(filename="heartBeat.log", format="[%(asctime)s] [%(levelname)8s] --- %(message)s (%(filename)s:%(lineno)s)", level=logging.INFO)
+logging.basicConfig(filename="/heartBeat.log", format="[%(asctime)s] [%(levelname)8s] --- %(message)s (%(filename)s:%(lineno)s)", level=logging.INFO)
 
 
 def main():
