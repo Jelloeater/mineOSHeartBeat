@@ -13,6 +13,7 @@ def main():
 	address = "localhost"
 	port = 25565
 	logging.info("Starting monitor")
+	sleep(120)
 	while True:
 		logging.debug("Checking Server @ " + address + ":" + str(port))
 		try:
