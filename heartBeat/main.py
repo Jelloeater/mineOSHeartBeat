@@ -6,29 +6,28 @@ __license__ = "GNU GPL v2.0"
 __version__ = "0.1b"
 __email__ = "jelloeater@gmail.com"
 
-
 import logging
-from socket import timeout
 import os
 from time import sleep
 import sys
-from minecraft_query import MinecraftQuery
 from mineos import mc
-from mineos import mineos_console
+import mineos_console
 
-logging.basicConfig(format="[%(asctime)s] [%(levelname)8s] --- %(message)s (%(filename)s:%(lineno)s)", level=logging.DEBUG)
+
+logging.basicConfig(format="[%(asctime)s] [%(levelname)8s] --- %(message)s (%(filename)s:%(lineno)s)",
+                    level=logging.DEBUG)
 
 logging.debug(sys.path)
 
 baseDirectory = "/var/games/minecraft"
 
-def main():
 
+def main():
 	serverList = mc.list_servers(baseDirectory)
 	print(serverList)
 
 	exServer = server(serverList[0])
-	exServer.stop_server()
+	# exServer.stop_server()
 	exServer.monitor_server()
 
 	logging.info("Starting monitor")
@@ -36,7 +35,13 @@ def main():
 	serversToCheck = []
 
 
+def get_server_list(self):
+	return mc.list_servers(baseDirectory)
+
+
 class server():
+
+
 	def __init__(self, serverName, owner="mc", serverBootWait=120, heartBeatWait=60):
 		self.serverName = serverName
 		self.owner = owner
@@ -60,11 +65,10 @@ class server():
 		return mc(server_name=self.serverName, base_directory=baseDirectory).up
 
 	def start_server(self):
-		mineos_console.args
 		logging.info("Starting Server: " + self.serverName)
-		mc(server_name=self.serverName, base_directory=baseDirectory).start()
+		x = mc(self.serverName, self.owner,baseDirectory)
+		x.start()
 		logging.info("Server Started")
-
 	def stop_server(self):
 		logging.info("Starting Server: " + self.serverName)
 		mc(server_name=self.serverName, base_directory=baseDirectory).kill()
@@ -72,8 +76,7 @@ class server():
 
 
 
-def get_server_list(self):
-	return mc.list_servers(baseDirectory)
+
 
 if __name__ == "__main__":
 	main()
