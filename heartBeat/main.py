@@ -1,6 +1,8 @@
 #!/usr/bin/env python2.7
 """A python project to manage Minecraft servers hosted on MineOS (http://minecraft.codeemo.com)
 """
+import multiprocessing
+
 __author__ = "Jesse S"
 __license__ = "GNU GPL v2.0"
 __version__ = "0.1b"
@@ -24,12 +26,18 @@ def main():
 	serverList = mc.list_servers(baseDirectory)
 	print(serverList)
 
-	exServer = server(serverList[0])
-	exServer.monitor_server()
+	# exServer = server(serverList[0])
+	# exServer.monitor_server()
 
 	logging.info("Starting monitor")
 	sleep(120)
 	serversToCheck = []
+
+	pool = multiprocessing.Pool(serverList, server.monitor_server)
+
+	pool.map()
+	pool.close()
+	pool.join()
 
 
 # TODO Implement TUI menu?
