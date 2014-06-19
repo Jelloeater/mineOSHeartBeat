@@ -14,39 +14,66 @@ from time import sleep
 import sys
 from minecraft_query import MinecraftQuery
 from mineos import mc
+from mineos import mineos_console
 
 logging.basicConfig(format="[%(asctime)s] [%(levelname)8s] --- %(message)s (%(filename)s:%(lineno)s)", level=logging.DEBUG)
 
 logging.debug(sys.path)
 
+baseDirectory = "/var/games/minecraft"
 
 def main():
 
-	serverList = mc.list_servers("/var/games/minecraft")
+	serverList = mc.list_servers(baseDirectory)
 	print(serverList)
 
-	address = "localhost"
-	port = 25565
+	exServer = server(serverList[0])
+	exServer.stop_server()
+	exServer.monitor_server()
+
 	logging.info("Starting monitor")
 	sleep(120)
-	while True:
-		logging.debug("Checking Server @ " + address + ":" + str(port))
-		try:
-			query = MinecraftQuery(address, port)
-			query.get_status()
-			logging.debug("Server is UP!")
-		except timeout:
-			logging.error("Server is Down @ " + address + ":" + str(port))
-			startServer("MagicFarm")
-			sleep(120)
-		sleep(60)
+	serversToCheck = []
 
 
-def startServer(serverName):
-	logging.info("Starting Server: " + serverName)
-	os.chdir("/usr/games/minecraft")
-	os.system("python ./mineos_console.py -d /var/games/minecraft -s "+serverName+" start")
-	logging.info("Server Started")
+class server():
+	def __init__(self, serverName, owner="mc", serverBootWait=120, heartBeatWait=60):
+		self.serverName = serverName
+		self.owner = owner
+		self.bootWait = serverBootWait
+		self.heartBeatWait = heartBeatWait
+
+	def monitor_server(self):
+		while True:
+			logging.info("Checking server {0}".format(self.serverName))
+
+			if self.is_server_up():
+				logging.debug("Server {0} is Up".format(self.serverName))
+			else:
+				logging.error("Server {0} is Down".format(self.serverName))
+				self.start_server()
+				sleep(self.bootWait)
+
+			sleep(self.heartBeatWait)
+
+	def is_server_up(self):
+		return mc(server_name=self.serverName, base_directory=baseDirectory).up
+
+	def start_server(self):
+		mineos_console.args
+		logging.info("Starting Server: " + self.serverName)
+		mc(server_name=self.serverName, base_directory=baseDirectory).start()
+		logging.info("Server Started")
+
+	def stop_server(self):
+		logging.info("Starting Server: " + self.serverName)
+		mc(server_name=self.serverName, base_directory=baseDirectory).kill()
+		logging.info("Server Started")
+
+
+
+def get_server_list(self):
+	return mc.list_servers(baseDirectory)
 
 if __name__ == "__main__":
 	main()
