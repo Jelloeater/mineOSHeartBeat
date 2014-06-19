@@ -7,11 +7,9 @@ __version__ = "0.1b"
 __email__ = "jelloeater@gmail.com"
 
 import logging
-import os
 from time import sleep
 import sys
 from mineos import mc
-import mineos_console
 
 
 logging.basicConfig(format="[%(asctime)s] [%(levelname)8s] --- %(message)s (%(filename)s:%(lineno)s)",
@@ -27,7 +25,6 @@ def main():
 	print(serverList)
 
 	exServer = server(serverList[0])
-	# exServer.stop_server()
 	exServer.monitor_server()
 
 	logging.info("Starting monitor")
@@ -35,13 +32,15 @@ def main():
 	serversToCheck = []
 
 
+# TODO Implement TUI menu?
+# TODO Create command line arg parse for reuse
+
+
 def get_server_list(self):
 	return mc.list_servers(baseDirectory)
 
 
 class server():
-
-
 	def __init__(self, serverName, owner="mc", serverBootWait=120, heartBeatWait=60):
 		self.serverName = serverName
 		self.owner = owner
@@ -66,16 +65,9 @@ class server():
 
 	def start_server(self):
 		logging.info("Starting Server: " + self.serverName)
-		x = mc(self.serverName, self.owner,baseDirectory)
+		x = mc(self.serverName, self.owner, baseDirectory)
 		x.start()
 		logging.info("Server Started")
-	def stop_server(self):
-		logging.info("Starting Server: " + self.serverName)
-		mc(server_name=self.serverName, base_directory=baseDirectory).kill()
-		logging.info("Server Started")
-
-
-
 
 
 if __name__ == "__main__":
