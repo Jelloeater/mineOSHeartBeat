@@ -2,12 +2,9 @@
 """A python project to manage Minecraft servers hosted on MineOS (http://minecraft.codeemo.com)
 """
 import logging
-import multiprocessing
-from threading import Thread
 from time import sleep
 import sys
 import argparse
-
 from mineos import mc
 
 
@@ -16,33 +13,45 @@ __license__ = "GNU GPL v2.0"
 __version__ = "0.1b"
 __email__ = "jelloeater@gmail.com"
 
-logging.basicConfig(format="[%(asctime)s] [%(levelname)8s] --- %(message)s (%(filename)s:%(lineno)s)",
-                    level=logging.DEBUG)
-
 baseDirectory = "/var/games/minecraft"
 
 
 def main():
-	logging.debug(sys.path)
-
 	parser = argparse.ArgumentParser(usage="Please specify either -i or -s",
 	                                 description="A MineOS Server Monitor"
 	                                             " (http://github.com/jelloeater/MineOSheartbeat)",
 	                                 version=__version__, )
 	parser.add_argument("-i", "--interactive", help="Interactive menu mode",
 	                    action="store_true")
-	parser.add_argument("-s", "--server", action="store", help="Single server watch mode"
-	)
+	parser.add_argument("-s", "--server", action="store", help="Single server watch mode")
+	parser.add_argument("-t", "--timeout", action="store", type=int, help="Single server timeout delay")
+	parser.add_argument("-l", "--list", action="store_true", help="List MineOS Servers")
+	parser.add_argument("-d", "--debug", action="store_true", help="Debug Logging Flag")
 	args = parser.parse_args()
 
-	if len(sys.argv) == 1:
+	if len(sys.argv) == 1:  # Displays help and lists servers
 		parser.print_help()
 		sys.exit(1)
 
+	if args.list:
+		print("Servers:")
+		for i in mc.list_servers(baseDirectory):
+			print(i)
+
+	if args.debug:
+		logging.basicConfig(format="[%(asctime)s] [%(levelname)8s] --- %(message)s (%(filename)s:%(lineno)s)",
+		                    level=logging.DEBUG)
+	else:
+		logging.basicConfig(filename="heartbeat.log",
+		                    format="[%(asctime)s] [%(levelname)8s] --- %(message)s (%(filename)s:%(lineno)s)",
+		                    level=logging.WARNING)
+
+	logging.debug(sys.path)
+
 	if args.interactive and not args.server:
 		interactive_mode.start()
-	if args.server and not args.interactive:
-		server_mode(args.server)
+	if args.server and args.timeout and not args.interactive:
+		single_server_mode.start(args.server, args.timeout)
 
 
 class interactive_mode():
@@ -78,15 +87,10 @@ class interactive_mode():
 			# Rewrites list when values are changed (I don't feel like packing and unpacking tuples)
 			cls.monitor_list = [x[0][0] for x in serverList if x[1] is True]
 
-			print(user_input)
-			if user_input == "Done" or user_input == "d" and len(
-					cls.monitor_list) >= 1:  # Only exits if we have work to do
-				break
+			if user_input == "Done" or user_input == "d" and len(cls.monitor_list) >= 1:
+				break # Only exits if we have work to do
 
 		logging.info("Starting monitor")
-
-		# FIXME Multi processing isn't working due to a pickle error.
-		# server(cls.monitor_list[0]).monitor_server()
 
 		while True:
 			for i in cls.monitor_list:
@@ -108,17 +112,14 @@ class interactive_mode():
 		return list(zip(mcServers, status))
 
 
-def monitorServerWorker(serverName):
-	server(serverName).check_server()
-
-
-def server_mode(server_name):
-	print("Single Server Mode")
-	print(server_name)
-
-
-def get_server_list(self):
-	return mc.list_servers(baseDirectory)
+class single_server_mode:
+	@staticmethod
+	def start(server_name, time_out):
+		print("Single Server Mode: " + server_name)
+		print("Press Ctrl-C to quit")
+		while True:
+			server(server_name).check_server()
+			sleep(time_out)
 
 
 class server():
