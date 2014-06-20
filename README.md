@@ -1,7 +1,6 @@
-mineOSHeartBeat
-===============
+# mineOSHeartBeat
 
-A simple script to detect if a Mincraft server is down, and restart it via MineOS
+A small application to detect if a Mincraft server(s) running on MineOS is down, and automatically restart it/them.
 
-# Note
-Query must be enabled on the Minecraft server for the script to work.
+## Usage
+For help just run with -h
