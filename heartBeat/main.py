@@ -13,7 +13,7 @@ __license__ = "GNU GPL v2.0"
 __version__ = "0.1b"
 __email__ = "jelloeater@gmail.com"
 
-baseDirectory = "/var/games/minecraft"
+BASE_DIRECTORY = "/var/games/minecraft"
 
 
 def main():
@@ -34,8 +34,8 @@ def main():
 		sys.exit(1)
 
 	if args.list:
-		print("Servers:")
-		for i in mc.list_servers(baseDirectory):
+		print("Servers @ " + BASE_DIRECTORY)
+		for i in mc.list_servers(BASE_DIRECTORY):
 			print(i)
 
 	if args.debug:
@@ -55,8 +55,8 @@ def main():
 
 
 class interactive_mode():
-	monitor_list = []
-	heartBeatWait = 5
+	MONITOR_LIST = []
+	HEART_BEAT_WAIT = 5
 
 	@classmethod
 	def start(cls):
@@ -85,23 +85,23 @@ class interactive_mode():
 				checkServer[int(user_input)] = True
 				serverList = list(zip(mcServers, checkServer))
 			# Rewrites list when values are changed (I don't feel like packing and unpacking tuples)
-			cls.monitor_list = [x[0][0] for x in serverList if x[1] is True]
+			cls.MONITOR_LIST = [x[0][0] for x in serverList if x[1] is True]
 
-			if user_input == "Done" or user_input == "d" and len(cls.monitor_list) >= 1:
+			if user_input == "Done" or user_input == "d" and len(cls.MONITOR_LIST) >= 1:
 				break # Only exits if we have work to do
 
 		logging.info("Starting monitor")
 
 		while True:
-			for i in cls.monitor_list:
+			for i in cls.MONITOR_LIST:
 				server(i).check_server()
 				sleep(.5)
-			sleep(cls.heartBeatWait)
+			sleep(cls.HEART_BEAT_WAIT)
 
 
 	@classmethod
 	def get_server_status_list(cls):
-		mcServers = mc.list_servers(baseDirectory)
+		mcServers = mc.list_servers(BASE_DIRECTORY)
 		status = []
 		for i in mcServers:
 			x = server(i)
@@ -139,11 +139,11 @@ class server():
 			sleep(self.bootWait)
 
 	def is_server_up(self):
-		return mc(server_name=self.serverName, base_directory=baseDirectory).up
+		return mc(server_name=self.serverName, base_directory=BASE_DIRECTORY).up
 
 	def start_server(self):
 		logging.info("Starting Server: " + self.serverName)
-		x = mc(self.serverName, self.owner, baseDirectory)
+		x = mc(self.serverName, self.owner, BASE_DIRECTORY)
 		x.start()
 		logging.info("Server Started")
 
