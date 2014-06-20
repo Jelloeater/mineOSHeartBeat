@@ -15,7 +15,7 @@ __version__ = "0.1b"
 __email__ = "jelloeater@gmail.com"
 
 logging.basicConfig(format="[%(asctime)s] [%(levelname)8s] --- %(message)s (%(filename)s:%(lineno)s)",
-                    level=logging.WARNING)
+                    level=logging.DEBUG)
 
 baseDirectory = "/var/games/minecraft"
 
@@ -47,35 +47,66 @@ def interactive_mode():
 	print("Interactive Mode")
 	while True:
 		# FIXME loop logic is messy
-		print("")
-		print("Servers:")
-		serverList = mc.list_servers(baseDirectory)
-		for i in serverList:
-			print(str(serverList.index(i)) + "\t" + i)
+		mcServers = get_server_status_list()
+
+		checkServer = []
+		for i in mcServers:
+			checkServer.append(False)
+		serverList = list(zip(mcServers, checkServer))
 
 		# exServer = server(serverList[0])
 		# exServer.monitor_server()
-		print("")
-		print("Select servers to Monitor")
-		x=raw_input(">")
 
+		while True:
+			print("")
+			print("Servers:")
+			print("# \t Name \t\t UP/DOWN \t Check")
+			for i in serverList:
+				print(str(serverList.index(i)) + "\t" + str(i[0][0]) + "\t" + str(i[0][1]) + "\t" + str(i[1]))
+
+			print("Select servers to Monitor(#) / (Done)")
+			x = raw_input(">")
+
+			if x.isdigit():
+				x = int(x)
+				checkServer[x] = True
+				serverList = list(zip(mcServers, checkServer))
+				# Rewrites list when values are changed (I don't feel like packing and unpacking tuples)
+
+			if x == "Done" or x == "d":
+				break
 
 		logging.info("Starting monitor")
-		serversToCheck = []
+		print([x for x in serverList])
 
-		try:
-			pool = multiprocessing.Pool(serversToCheck, server.monitor_server)
 
-			pool.map()
-			pool.close()
-			pool.join()
-			break
-		except:
-			print("Please select at least one server")
+
+		# try:
+		#
+		# 	pool = multiprocessing.Pool([x for x in serverList if serverList[x][1] is True], server.monitor_server)
+		#
+		# 	pool.map()
+		# 	pool.close()
+		# 	pool.join()
+		# 	break
+		# except:
+		# 	print("Please select at least one server")
 
 
 # TODO Implement TUI menu?
 # TODO Create command line arg parse for reuse
+
+
+def get_server_status_list():
+	mcServers = mc.list_servers(baseDirectory)
+	status = []
+	for i in mcServers:
+		x = server(i)
+		if x.is_server_up():status.append("UP")
+		else:
+			status.append("DOWN")
+	return list(zip(mcServers, status))
+
 
 def server_mode(server_name):
 	print("Single Server Mode")
