@@ -3,6 +3,7 @@
 """
 import logging
 import multiprocessing
+from threading import Thread
 from time import sleep
 import sys
 import argparse
@@ -46,6 +47,7 @@ def main():
 
 class interactive_mode():
 	monitor_list = []
+	heartBeatWait = 5
 
 	@classmethod
 	def start(cls):
@@ -77,7 +79,8 @@ class interactive_mode():
 			cls.monitor_list = [x[0][0] for x in serverList if x[1] is True]
 
 			print(user_input)
-			if user_input == "Done" or user_input == "d" and len(cls.monitor_list) <= 1:  # Only exits if we have work to do
+			if user_input == "Done" or user_input == "d" and len(
+					cls.monitor_list) >= 1:  # Only exits if we have work to do
 				break
 
 		logging.info("Starting monitor")
@@ -85,15 +88,12 @@ class interactive_mode():
 		# FIXME Multi processing isn't working due to a pickle error.
 		# server(cls.monitor_list[0]).monitor_server()
 
+		while True:
+			for i in cls.monitor_list:
+				server(i).check_server()
+				sleep(.5)
+			sleep(cls.heartBeatWait)
 
-		# pool = multiprocessing.Pool()
-		# pool.map(cls.monitorServerWorker, cls.monitor_list)
-		# pool.close()
-		# pool.join()
-
-	@staticmethod
-	def monitorServerWorker(serverName):
-		server(serverName).monitor_server()
 
 	@classmethod
 	def get_server_status_list(cls):
@@ -108,6 +108,10 @@ class interactive_mode():
 		return list(zip(mcServers, status))
 
 
+def monitorServerWorker(serverName):
+	server(serverName).check_server()
+
+
 def server_mode(server_name):
 	print("Single Server Mode")
 	print(server_name)
@@ -118,24 +122,20 @@ def get_server_list(self):
 
 
 class server():
-	def __init__(self, serverName, owner="mc", serverBootWait=120, heartBeatWait=60):
+	def __init__(self, serverName, owner="mc", serverBootWait=120):
 		self.serverName = serverName
 		self.owner = owner
 		self.bootWait = serverBootWait
-		self.heartBeatWait = heartBeatWait
 
-	def monitor_server(self):
-		while True:
-			logging.info("Checking server {0}".format(self.serverName))
+	def check_server(self):
+		logging.info("Checking server {0}".format(self.serverName))
 
-			if self.is_server_up():
-				logging.debug("Server {0} is Up".format(self.serverName))
-			else:
-				logging.error("Server {0} is Down".format(self.serverName))
-				self.start_server()
-				sleep(self.bootWait)
-
-			sleep(self.heartBeatWait)
+		if self.is_server_up():
+			logging.debug("Server {0} is Up".format(self.serverName))
+		else:
+			logging.error("Server {0} is Down".format(self.serverName))
+			self.start_server()
+			sleep(self.bootWait)
 
 	def is_server_up(self):
 		return mc(server_name=self.serverName, base_directory=baseDirectory).up
