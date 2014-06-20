@@ -12,17 +12,35 @@ import logging
 from time import sleep
 import sys
 from mineos import mc
+import argparse
 
 
 logging.basicConfig(format="[%(asctime)s] [%(levelname)8s] --- %(message)s (%(filename)s:%(lineno)s)",
                     level=logging.DEBUG)
 
-logging.debug(sys.path)
-
 baseDirectory = "/var/games/minecraft"
 
 
 def main():
+	logging.debug(sys.path)
+
+	parser = argparse.ArgumentParser()
+	parser.add_argument("-i", "--interactive", help="Interactive menu mode",
+	                    action="store_true")
+	parser.add_argument("-s", "--server", action="store", help="Single server watch mode"
+	                    )
+	args = parser.parse_args()
+
+	if args.interactive and not args.server:
+		interactive_mode()
+	elif args.server and not args.interactive:
+		server_mode(args.server)
+	else:
+		print("Please Specify either -i or -s")
+
+
+def interactive_mode():
+	print("Interactive Mode")
 	serverList = mc.list_servers(baseDirectory)
 	print(serverList)
 
@@ -40,8 +58,12 @@ def main():
 	pool.join()
 
 
-# TODO Implement TUI menu?
-# TODO Create command line arg parse for reuse
+	# TODO Implement TUI menu?
+	# TODO Create command line arg parse for reuse
+
+def server_mode(server_name):
+	print("Single Server Mode")
+	print(server_name)
 
 
 def get_server_list(self):
