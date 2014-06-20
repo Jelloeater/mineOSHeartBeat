@@ -39,66 +39,69 @@ def main():
 		sys.exit(1)
 
 	if args.interactive and not args.server:
-		interactive_mode()
+		interactive_mode.start()
 	if args.server and not args.interactive:
 		server_mode(args.server)
 
 
-def interactive_mode():
-	print("Interactive Mode")
+class interactive_mode():
 	monitor_list = []
 
-	# FIXME loop logic is messy
-	mcServers = get_server_status_list()
+	@staticmethod
+	def start():
+		print("Interactive Mode")
 
-	checkServer = []
-	for i in mcServers:
-		checkServer.append(False)
+		# FIXME loop logic is messy
+		mcServers = interactive_mode.get_server_status_list()
 
-	serverList = list(zip(mcServers, checkServer))
+		checkServer = []
+		for i in mcServers:  # Generate matching t/f list
+			checkServer.append(False)
 
-	while True:
-		print("")
-		print("Servers:")
-		print("# \t Name \t\t UP/DOWN \t Check")
-		for i in serverList:
-			print(str(serverList.index(i)) + "\t" + str(i[0][0]) + "\t" + str(i[0][1]) + "\t" + str(i[1]))
+		serverList = list(zip(mcServers, checkServer))
 
-		print("Select servers to Monitor(#) / (Done)")
-		user_input = raw_input(">")
+		while True:
+			print("")
+			print("Servers:")
+			print("# \t Name \t\t UP/DOWN \t Check")
+			for i in serverList:
+				print(str(serverList.index(i)) + "\t" + str(i[0][0]) + "\t" + str(i[0][1]) + "\t" + str(i[1]))
 
-		if user_input.isdigit():
-			checkServer[int(user_input)] = True
-			serverList = list(zip(mcServers, checkServer))
-		# Rewrites list when values are changed (I don't feel like packing and unpacking tuples)
-		monitor_list = [x[0][0] for x in serverList if x[1] is True]
+			print("Select servers to Monitor(#) / (Done)")
+			user_input = raw_input(">")
 
-		print(user_input)
-		if user_input == "Done" or user_input == "d" and len(monitor_list) <= 1:  # Only exits if we have work to do
-			break
+			if user_input.isdigit():
+				checkServer[int(user_input)] = True
+				serverList = list(zip(mcServers, checkServer))
+			# Rewrites list when values are changed (I don't feel like packing and unpacking tuples)
+			monitor_list = [x[0][0] for x in serverList if x[1] is True]
 
-	logging.info("Starting monitor")
+			print(user_input)
+			if user_input == "Done" or user_input == "d" and len(monitor_list) <= 1:  # Only exits if we have work to do
+				break
 
+		logging.info("Starting monitor")
 
-	# TODO take list and process to pool
+		pool = multiprocessing.Pool()
+		pool.map(interactive_mode.monitorServerWorker, interactive_mode.monitor_list)
+		pool.close()
+		pool.join()
 
+	@staticmethod
+	def monitorServerWorker(serverName):
+		server(serverName).monitor_server()
 
-	pool = multiprocessing.Pool()
-	pool.map(server.monitor_server, monitor_list)
-	pool.close()
-	pool.join()
-
-
-def get_server_status_list():
-	mcServers = mc.list_servers(baseDirectory)
-	status = []
-	for i in mcServers:
-		x = server(i)
-		if x.is_server_up():
-			status.append("UP")
-		else:
-			status.append("DOWN")
-	return list(zip(mcServers, status))
+	@staticmethod
+	def get_server_status_list():
+		mcServers = mc.list_servers(baseDirectory)
+		status = []
+		for i in mcServers:
+			x = server(i)
+			if x.is_server_up():
+				status.append("UP")
+			else:
+				status.append("DOWN")
+		return list(zip(mcServers, status))
 
 
 def server_mode(server_name):
