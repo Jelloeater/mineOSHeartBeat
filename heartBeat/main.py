@@ -1,12 +1,13 @@
 #!/usr/bin/env python2.7
 """A python project to manage Minecraft servers hosted on MineOS (http://minecraft.codeemo.com)
 """
-import multiprocessing
 import logging
+import multiprocessing
 from time import sleep
 import sys
-from mineos import mc
 import argparse
+
+from mineos import mc
 
 
 __author__ = "Jesse S"
@@ -45,56 +46,47 @@ def main():
 
 def interactive_mode():
 	print("Interactive Mode")
+	monitor_list = []
+
+	# FIXME loop logic is messy
+	mcServers = get_server_status_list()
+
+	checkServer = []
+	for i in mcServers:
+		checkServer.append(False)
+
+	serverList = list(zip(mcServers, checkServer))
+
 	while True:
-		# FIXME loop logic is messy
-		mcServers = get_server_status_list()
+		print("")
+		print("Servers:")
+		print("# \t Name \t\t UP/DOWN \t Check")
+		for i in serverList:
+			print(str(serverList.index(i)) + "\t" + str(i[0][0]) + "\t" + str(i[0][1]) + "\t" + str(i[1]))
 
-		checkServer = []
-		for i in mcServers:
-			checkServer.append(False)
-		serverList = list(zip(mcServers, checkServer))
+		print("Select servers to Monitor(#) / (Done)")
+		user_input = raw_input(">")
 
-		# exServer = server(serverList[0])
-		# exServer.monitor_server()
+		if user_input.isdigit():
+			checkServer[int(user_input)] = True
+			serverList = list(zip(mcServers, checkServer))
+		# Rewrites list when values are changed (I don't feel like packing and unpacking tuples)
+		monitor_list = [x[0][0] for x in serverList if x[1] is True]
 
-		while True:
-			print("")
-			print("Servers:")
-			print("# \t Name \t\t UP/DOWN \t Check")
-			for i in serverList:
-				print(str(serverList.index(i)) + "\t" + str(i[0][0]) + "\t" + str(i[0][1]) + "\t" + str(i[1]))
+		print(user_input)
+		if user_input == "Done" or user_input == "d" and len(monitor_list) <= 1:  # Only exits if we have work to do
+			break
 
-			print("Select servers to Monitor(#) / (Done)")
-			x = raw_input(">")
-
-			if x.isdigit():
-				x = int(x)
-				checkServer[x] = True
-				serverList = list(zip(mcServers, checkServer))
-				# Rewrites list when values are changed (I don't feel like packing and unpacking tuples)
-
-			if x == "Done" or x == "d":
-				break
-
-		logging.info("Starting monitor")
-		print([x for x in serverList])
+	logging.info("Starting monitor")
 
 
-
-		# try:
-		#
-		# 	pool = multiprocessing.Pool([x for x in serverList if serverList[x][1] is True], server.monitor_server)
-		#
-		# 	pool.map()
-		# 	pool.close()
-		# 	pool.join()
-		# 	break
-		# except:
-		# 	print("Please select at least one server")
+	# TODO take list and process to pool
 
 
-# TODO Implement TUI menu?
-# TODO Create command line arg parse for reuse
+	pool = multiprocessing.Pool()
+	pool.map(server.monitor_server, monitor_list)
+	pool.close()
+	pool.join()
 
 
 def get_server_status_list():
@@ -102,7 +94,8 @@ def get_server_status_list():
 	status = []
 	for i in mcServers:
 		x = server(i)
-		if x.is_server_up():status.append("UP")
+		if x.is_server_up():
+			status.append("UP")
 		else:
 			status.append("DOWN")
 	return list(zip(mcServers, status))
