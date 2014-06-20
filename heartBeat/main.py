@@ -45,21 +45,33 @@ def main():
 
 def interactive_mode():
 	print("Interactive Mode")
-	serverList = mc.list_servers(baseDirectory)
-	print(serverList)
+	while True:
+		# FIXME loop logic is messy
+		print("")
+		print("Servers:")
+		serverList = mc.list_servers(baseDirectory)
+		for i in serverList:
+			print(str(serverList.index(i)) + "\t" + i)
 
-	# exServer = server(serverList[0])
-	# exServer.monitor_server()
+		# exServer = server(serverList[0])
+		# exServer.monitor_server()
+		print("")
+		print("Select servers to Monitor")
+		x=raw_input(">")
 
-	logging.info("Starting monitor")
-	sleep(120)
-	serversToCheck = []
 
-	pool = multiprocessing.Pool(serverList, server.monitor_server)
+		logging.info("Starting monitor")
+		serversToCheck = []
 
-	pool.map()
-	pool.close()
-	pool.join()
+		try:
+			pool = multiprocessing.Pool(serversToCheck, server.monitor_server)
+
+			pool.map()
+			pool.close()
+			pool.join()
+			break
+		except:
+			print("Please select at least one server")
 
 
 # TODO Implement TUI menu?
