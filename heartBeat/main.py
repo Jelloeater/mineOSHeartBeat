@@ -47,8 +47,8 @@ def main():
 class interactive_mode():
 	monitor_list = []
 
-	@staticmethod
-	def start():
+	@classmethod
+	def start(cls):
 		print("Interactive Mode")
 
 		# FIXME loop logic is messy
@@ -74,25 +74,29 @@ class interactive_mode():
 				checkServer[int(user_input)] = True
 				serverList = list(zip(mcServers, checkServer))
 			# Rewrites list when values are changed (I don't feel like packing and unpacking tuples)
-			monitor_list = [x[0][0] for x in serverList if x[1] is True]
+			cls.monitor_list = [x[0][0] for x in serverList if x[1] is True]
 
 			print(user_input)
-			if user_input == "Done" or user_input == "d" and len(monitor_list) <= 1:  # Only exits if we have work to do
+			if user_input == "Done" or user_input == "d" and len(cls.monitor_list) <= 1:  # Only exits if we have work to do
 				break
 
 		logging.info("Starting monitor")
 
-		pool = multiprocessing.Pool()
-		pool.map(interactive_mode.monitorServerWorker, interactive_mode.monitor_list)
-		pool.close()
-		pool.join()
+		# FIXME Multi processing isn't working due to a pickle error.
+		# server(cls.monitor_list[0]).monitor_server()
+
+
+		# pool = multiprocessing.Pool()
+		# pool.map(cls.monitorServerWorker, cls.monitor_list)
+		# pool.close()
+		# pool.join()
 
 	@staticmethod
 	def monitorServerWorker(serverName):
 		server(serverName).monitor_server()
 
-	@staticmethod
-	def get_server_status_list():
+	@classmethod
+	def get_server_status_list(cls):
 		mcServers = mc.list_servers(baseDirectory)
 		status = []
 		for i in mcServers:
