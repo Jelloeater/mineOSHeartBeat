@@ -1,6 +1,9 @@
 #!/usr/bin/env python2.7
 """A python project to manage Minecraft servers hosted on MineOS (http://minecraft.codeemo.com)
 """
+import argparse
+import sys
+
 __author__ = "Jesse S"
 __license__ = "GNU GPL v2.0"
 __version__ = "0.1b"
@@ -17,8 +20,17 @@ logging.basicConfig(format="[%(asctime)s] [%(levelname)8s] --- %(message)s (%(fi
 
 logging.debug(sys.path)
 
-
 def main():
+	parser = argparse.ArgumentParser()
+	parser.add_argument("-s", "--server", action="store", help="Single server watch mode")
+	args = parser.parse_args()
+
+	if args.server:
+		monitor_server(args.server)
+	else:
+		print("Please specify -s")
+
+def monitor_server():
 	address = "localhost"
 	port = 25565
 	logging.info("Starting monitor")
