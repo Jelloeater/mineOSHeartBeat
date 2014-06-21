@@ -1,17 +1,22 @@
 #!/usr/bin/env python2.7
-"""A python project to manage Minecraft servers hosted on MineOS (http://minecraft.codeemo.com)
+"""A python project for managing Minecraft servers hosted on MineOS (http://minecraft.codeemo.com)
 """
+
 import logging
 from time import sleep
 import sys
 import argparse
-from mineos import mc
 
+sys.path.append("/usr/games/minecraft")  # So we can run the script from other locations
+from mineos import mc
 
 __author__ = "Jesse S"
 __license__ = "GNU GPL v2.0"
-__version__ = "0.1b"
+__version__ = "0.6b"
 __email__ = "jelloeater@gmail.com"
+
+
+
 
 
 class Settings():
@@ -21,7 +26,7 @@ class Settings():
 def main():
 	parser = argparse.ArgumentParser(description="A MineOS Server Monitor"
 	                                             " (http://github.com/jelloeater/MineOSheartbeat)",
-	                                 version=__version__, epilog="Please specify mode (-s or -i) to start monitoring")
+	                                 version=__version__, epilog="Please specify mode (-s, -i or -m) to start monitoring")
 
 	server_group = parser.add_argument_group('Single Server Mode')
 	server_group.add_argument("-s", "--single", action="store", help="Single server watch mode")
