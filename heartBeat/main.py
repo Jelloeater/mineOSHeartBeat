@@ -24,12 +24,16 @@ def main():
 	                                 version=__version__, epilog="Please specify mode (-s or -i) to start monitoring")
 
 	server_group = parser.add_argument_group('Single Server Mode')
-	server_group.add_argument("-s", "--server", action="store", help="Single server watch mode")
+	server_group.add_argument("-s", "--single", action="store", help="Single server watch mode")
 
 	interactive_group = parser.add_argument_group('Interactive Mode')
 	interactive_group.add_argument("-i", "--interactive", help="Interactive menu mode", action="store_true")
 
-	parser.add_argument("-t", "--timeout", action="store", type=int, default=60, help="Timeout delay (seconds) (ex. 60)")
+	multi_server_group = parser.add_argument_group('Multi Server Mode')
+	multi_server_group.add_argument("-m", "--multi", help="Multi server watch mode", action="store_true")
+
+	parser.add_argument("-t", "--timeout", action="store", type=int, default=60,
+	                    help="Wait x second between checks (ex. 60)")
 
 	parser.add_argument('-b', dest='base_directory', help='MineOS Server Base Location (ex. /var/games/minecraft)',
 	                    default='/var/games/minecraft')
@@ -58,13 +62,18 @@ def main():
 
 	logging.debug(sys.path)
 
-	if args.interactive and not args.server:
+	# TODO I hope there is a better way to do this
+	if args.interactive and not args.single and not args.multi:
 		interactive_mode.HEART_BEAT_WAIT = args.timeout
 		interactive_mode.start()
 
-	if args.server and not args.interactive:
-		single_server_mode.time_out = args.timeout
+	if args.single and not args.interactive and not args.multi:
+		single_server_mode.TIME_OUT = args.timeout
 		single_server_mode.start(args.server)
+
+	if args.multi and not args.interactive and not args.single:
+		multi_server_mode.TIME_OUT = args.timeout
+		multi_server_mode.start()
 
 
 class interactive_mode():
@@ -125,8 +134,22 @@ class interactive_mode():
 		return list(zip(mcServers, status))
 
 
+class multi_server_mode:
+	TIME_OUT = 60
+
+	@classmethod
+	def start(cls):
+		print("Multi Server mode")
+		print("Press Ctrl-C to quit")
+
+		while True:
+			for i in mc.list_servers(Settings.BASE_DIRECTORY):
+				server(i).check_server()
+			sleep(cls.TIME_OUT)
+
+
 class single_server_mode:
-	time_out = 60
+	TIME_OUT = 60
 
 	@classmethod
 	def start(cls, server_name):
@@ -139,7 +162,7 @@ class single_server_mode:
 			except RuntimeWarning:
 				print("Please enter a valid server name")
 				break
-			sleep(cls.time_out)
+			sleep(cls.TIME_OUT)
 
 
 class server():
