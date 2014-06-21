@@ -15,6 +15,7 @@ __license__ = "GNU GPL v2.0"
 __version__ = "0.6b"
 __email__ = "jelloeater@gmail.com"
 
+sys.path.append("/usr/games/minecraft")  # So we can run the script from other locations
 
 
 
@@ -46,16 +47,7 @@ def main():
 	parser.add_argument("-d", "--debug", action="store_true", help="Debug Logging Flag")
 	args = parser.parse_args()
 
-	if len(sys.argv) == 1:  # Displays help and lists servers
-		parser.print_help()
-		sys.exit(1)
-
 	Settings.BASE_DIRECTORY = args.base_directory
-
-	if args.list:
-		print("Servers @ " + Settings.BASE_DIRECTORY)
-		for i in mc.list_servers(Settings.BASE_DIRECTORY):
-			print(i)
 
 	if args.debug:
 		logging.basicConfig(format="[%(asctime)s] [%(levelname)8s] --- %(message)s (%(filename)s:%(lineno)s)",
@@ -66,17 +58,27 @@ def main():
 		                    level=logging.WARNING)
 
 	logging.debug(sys.path)
+	logging.debug(args)
 
-	# TODO I hope there is a better way to do this
-	if args.interactive and not args.single and not args.multi:
+	if len(sys.argv) == 1:  # Displays help and lists servers
+		parser.print_help()
+		sys.exit(1)
+
+	if args.list:
+		print("Servers @ " + Settings.BASE_DIRECTORY)
+		for i in mc.list_servers(Settings.BASE_DIRECTORY):
+			print(i)
+
+	# TODO Implement better arg logic
+	if args.interactive and args.single is None and not args.multi:
 		interactive_mode.HEART_BEAT_WAIT = args.timeout
 		interactive_mode.start()
 
 	if args.single and not args.interactive and not args.multi:
 		single_server_mode.TIME_OUT = args.timeout
-		single_server_mode.start(args.server)
+		single_server_mode.start(args.single)
 
-	if args.multi and not args.interactive and not args.single:
+	if args.multi and not args.interactive and args.single is None:
 		multi_server_mode.TIME_OUT = args.timeout
 		multi_server_mode.start()
 
