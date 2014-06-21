@@ -13,18 +13,27 @@ __license__ = "GNU GPL v2.0"
 __version__ = "0.1b"
 __email__ = "jelloeater@gmail.com"
 
-BASE_DIRECTORY = "/var/games/minecraft"
+
+class Settings():
+	BASE_DIRECTORY = ""
 
 
 def main():
-	parser = argparse.ArgumentParser(usage="Please specify either -i or -s",
-	                                 description="A MineOS Server Monitor"
+	parser = argparse.ArgumentParser(description="A MineOS Server Monitor"
 	                                             " (http://github.com/jelloeater/MineOSheartbeat)",
-	                                 version=__version__, )
-	parser.add_argument("-i", "--interactive", help="Interactive menu mode",
-	                    action="store_true")
-	parser.add_argument("-s", "--server", action="store", help="Single server watch mode")
-	parser.add_argument("-t", "--timeout", action="store", type=int, help="Single server timeout delay")
+	                                 version=__version__)
+
+	server_group = parser.add_argument_group('Single Server Mode')
+	server_group.add_argument("-s", "--server", action="store", help="Single server watch mode")
+
+	interactive_group = parser.add_argument_group('Interactive Mode')
+	interactive_group.add_argument("-i", "--interactive", help="Interactive menu mode", action="store_true")
+
+
+	parser.add_argument("-t", "--timeout", action="store", type=int, default=60, help="Timeout delay")
+
+	parser.add_argument('-b', dest='base_directory', help='MineOS Server Base Location (ex. /var/games/minecraft)',
+	                    default='/var/games/minecraft')
 	parser.add_argument("-l", "--list", action="store_true", help="List MineOS Servers")
 	parser.add_argument("-d", "--debug", action="store_true", help="Debug Logging Flag")
 	args = parser.parse_args()
@@ -33,9 +42,11 @@ def main():
 		parser.print_help()
 		sys.exit(1)
 
+	Settings.BASE_DIRECTORY = args.base_directory
+
 	if args.list:
-		print("Servers @ " + BASE_DIRECTORY)
-		for i in mc.list_servers(BASE_DIRECTORY):
+		print("Servers @ " + Settings.BASE_DIRECTORY)
+		for i in mc.list_servers(Settings.BASE_DIRECTORY):
 			print(i)
 
 	if args.debug:
@@ -49,9 +60,12 @@ def main():
 	logging.debug(sys.path)
 
 	if args.interactive and not args.server:
+		interactive_mode.HEART_BEAT_WAIT = args.timeout
 		interactive_mode.start()
+
 	if args.server and args.timeout and not args.interactive:
-		single_server_mode.start(args.server, args.timeout)
+		single_server_mode.time_out = args.timeout
+		single_server_mode.start(args.server)
 
 
 class interactive_mode():
@@ -88,7 +102,7 @@ class interactive_mode():
 			cls.MONITOR_LIST = [x[0][0] for x in serverList if x[1] is True]
 
 			if user_input == "Done" or user_input == "d" and len(cls.MONITOR_LIST) >= 1:
-				break # Only exits if we have work to do
+				break  # Only exits if we have work to do
 
 		logging.info("Starting monitor")
 
@@ -101,7 +115,7 @@ class interactive_mode():
 
 	@classmethod
 	def get_server_status_list(cls):
-		mcServers = mc.list_servers(BASE_DIRECTORY)
+		mcServers = mc.list_servers(Settings.BASE_DIRECTORY)
 		status = []
 		for i in mcServers:
 			x = server(i)
@@ -113,13 +127,19 @@ class interactive_mode():
 
 
 class single_server_mode:
-	@staticmethod
-	def start(server_name, time_out):
+	time_out = 60
+	@classmethod
+	def start(cls, server_name):
 		print("Single Server Mode: " + server_name)
 		print("Press Ctrl-C to quit")
+
 		while True:
-			server(server_name).check_server()
-			sleep(time_out)
+			try:
+				server(server_name).check_server()
+			except RuntimeWarning:
+				print("Please enter a valid server name")
+				break
+			sleep(cls.time_out)
 
 
 class server():
@@ -139,11 +159,11 @@ class server():
 			sleep(self.bootWait)
 
 	def is_server_up(self):
-		return mc(server_name=self.serverName, base_directory=BASE_DIRECTORY).up
+		return mc(server_name=self.serverName, base_directory=Settings.BASE_DIRECTORY).up
 
 	def start_server(self):
 		logging.info("Starting Server: " + self.serverName)
-		x = mc(self.serverName, self.owner, BASE_DIRECTORY)
+		x = mc(self.serverName, self.owner, Settings.BASE_DIRECTORY)
 		x.start()
 		logging.info("Server Started")
 
