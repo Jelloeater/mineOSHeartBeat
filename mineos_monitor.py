@@ -1,6 +1,11 @@
 #!/usr/bin/env python2.7
 """A python project for managing Minecraft servers hosted on MineOS (http://minecraft.codeemo.com)
 """
+__author__ = "Jesse S"
+__license__ = "GNU GPL v2.0"
+__version__ = "0.6b"
+__email__ = "jelloeater@gmail.com"
+
 
 import logging
 from time import sleep
@@ -9,15 +14,6 @@ import argparse
 
 sys.path.append("/usr/games/minecraft")  # So we can run the script from other locations
 from mineos import mc
-
-__author__ = "Jesse S"
-__license__ = "GNU GPL v2.0"
-__version__ = "0.6b"
-__email__ = "jelloeater@gmail.com"
-
-sys.path.append("/usr/games/minecraft")  # So we can run the script from other locations
-
-
 
 
 class Settings():
