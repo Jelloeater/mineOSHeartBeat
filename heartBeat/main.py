@@ -21,7 +21,7 @@ class Settings():
 def main():
 	parser = argparse.ArgumentParser(description="A MineOS Server Monitor"
 	                                             " (http://github.com/jelloeater/MineOSheartbeat)",
-	                                 version=__version__)
+	                                 version=__version__, epilog="Please specify mode (-s or -i) to start monitoring")
 
 	server_group = parser.add_argument_group('Single Server Mode')
 	server_group.add_argument("-s", "--server", action="store", help="Single server watch mode")
@@ -29,8 +29,7 @@ def main():
 	interactive_group = parser.add_argument_group('Interactive Mode')
 	interactive_group.add_argument("-i", "--interactive", help="Interactive menu mode", action="store_true")
 
-
-	parser.add_argument("-t", "--timeout", action="store", type=int, default=60, help="Timeout delay")
+	parser.add_argument("-t", "--timeout", action="store", type=int, default=60, help="Timeout delay (seconds) (ex. 60)")
 
 	parser.add_argument('-b', dest='base_directory', help='MineOS Server Base Location (ex. /var/games/minecraft)',
 	                    default='/var/games/minecraft')
@@ -63,7 +62,7 @@ def main():
 		interactive_mode.HEART_BEAT_WAIT = args.timeout
 		interactive_mode.start()
 
-	if args.server and args.timeout and not args.interactive:
+	if args.server and not args.interactive:
 		single_server_mode.time_out = args.timeout
 		single_server_mode.start(args.server)
 
@@ -128,6 +127,7 @@ class interactive_mode():
 
 class single_server_mode:
 	time_out = 60
+
 	@classmethod
 	def start(cls, server_name):
 		print("Single Server Mode: " + server_name)
