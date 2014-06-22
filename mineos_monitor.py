@@ -1,16 +1,17 @@
 #!/usr/bin/env python2.7
 """A python project for managing Minecraft servers hosted on MineOS (http://minecraft.codeemo.com)
 """
+import smtplib
+import logging
+from time import sleep
+import sys
+import argparse
+
 __author__ = "Jesse S"
 __license__ = "GNU GPL v2.0"
 __version__ = "0.6b"
 __email__ = "jelloeater@gmail.com"
 
-
-import logging
-from time import sleep
-import sys
-import argparse
 
 sys.path.append("/usr/games/minecraft")  # So we can run the script from other locations
 from mineos import mc
@@ -23,7 +24,8 @@ class Settings():
 def main():
 	parser = argparse.ArgumentParser(description="A MineOS Server Monitor"
 	                                             " (http://github.com/jelloeater/MineOSheartbeat)",
-	                                 version=__version__, epilog="Please specify mode (-s, -i or -m) to start monitoring")
+	                                 version=__version__,
+	                                 epilog="Please specify mode (-s, -i or -m) to start monitoring")
 
 	server_group = parser.add_argument_group('Single Server Mode')
 	server_group.add_argument("-s", "--single", action="store", help="Single server watch mode")
@@ -168,6 +170,38 @@ class single_server_mode:
 			sleep(cls.TIME_OUT)
 
 
+class gmail():
+	"""  Lets g-mail users send email messages. Creates a provider. """
+	# TODO Maybe implement other mail providers
+	def __init__(self, username, password):
+		self.__username = self.__getFromAddress(username)
+		self.__password = password
+		self.__fromAddress = self.__username
+
+	@staticmethod
+	def __getFromAddress(username):
+		return username + "@gmail.com"
+
+	def send(self, to, subject, text):
+		gmail_user = self.__username
+		gmail_pwd = self.__password
+		FROM = self.__fromAddress
+		TO = [to]  # must be a list
+		SUBJECT = subject
+		TEXT = text
+
+		# Prepare actual message
+		message = """\From: %s\nTo: %s\nSubject: %s\n\n%s
+            """ % (FROM, ", ".join(TO), SUBJECT, TEXT)
+
+		server = smtplib.SMTP("smtp.gmail.com", 587)  # or port 465 doesn't seem to work!
+		server.ehlo()
+		server.starttls()
+		server.login(gmail_user, gmail_pwd)
+		server.sendmail(FROM, TO, message)
+		server.close()
+
+
 class server():
 	def __init__(self, serverName, owner="mc", serverBootWait=120):
 		self.serverName = serverName
@@ -196,3 +230,4 @@ class server():
 
 if __name__ == "__main__":
 	main()
+
