@@ -80,16 +80,15 @@ def main():
 		gmail.PASSWORD = args.password
 		gmail.SEND_ALERT_TO.append(args.to)
 
-	# TODO Implement better arg logic
-	if args.interactive and args.single is None and not args.multi:
+	if all([args.interactive, args.single is None, not args.multi]):
 		interactive_mode.HEART_BEAT_WAIT = args.delay
 		interactive_mode.start()
 
-	if args.single and not args.interactive and not args.multi:
+	if all([args.single, not args.interactive, not args.multi]):
 		single_server_mode.TIME_OUT = args.delay
 		single_server_mode.start(args.single)
 
-	if args.multi and not args.interactive and args.single is None:
+	if all([args.multi, not args.interactive, args.single is None]):
 		multi_server_mode.TIME_OUT = args.delay
 		multi_server_mode.start()
 
@@ -236,9 +235,8 @@ class server():
 		x.start()
 		logging.info("Server Started")
 		if gmail.ENABLE:
-			f = open(Settings.LOG_FILENAME)
-			log = f.read()
-			f.close()
+			with open(Settings.LOG_FILENAME) as f:
+				log = f.read()
 			gmail.send(subject="Server " + self.serverName + " is down", text=log)  # Sends alert
 
 if __name__ == "__main__":
