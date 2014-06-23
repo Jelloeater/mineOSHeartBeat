@@ -289,9 +289,14 @@ class server():
 		x.start()
 		logging.info("Server Started")
 		if gmail.ENABLE:
-			with open(globalVars.LOG_FILENAME) as f:
-				log = f.read()
-			gmail.send(subject="Server " + self.serverName + " is down", text=log)  # Sends alert
+			try:
+				logging.debug("Debug logging should be off, so we write issues to the file, NOT the console")
+				with open(globalVars.LOG_FILENAME) as f:
+					log = f.read()
+					gmail.send(subject="Server " + self.serverName + " is down", text=log)  # Sends alert
+			except IOError:
+				logging.error("Can't find the log file to send, aborting sending mail")
+
 
 if __name__ == "__main__":
 	gmail.loadSettings()
