@@ -42,7 +42,8 @@ def main():
 	multi_server_group.add_argument("-m", "--multi", help="Multi server watch mode", action="store_true")
 
 	email_group = parser.add_argument_group('E-mail Alert Mode')
-	email_group.add_argument("-e", "--emailMode", help="Enables email notification (must be run once by itself first)", action="store_true")
+	email_group.add_argument("-e", "--emailMode", help="Enables email notification", action="store_true")
+	email_group.add_argument("-c", "--configureEmailAlerts", help="Configure email alerts", action="store_true")
 
 	parser.add_argument("-d", "--delay", action="store", type=int, default=60,
 	                    help="Wait x second between checks (ex. 60)")
@@ -75,13 +76,19 @@ def main():
 		for i in mc.list_servers(globalVars.BASE_DIRECTORY):
 			print(i)
 
+	if args.configureEmailAlerts:
+		gmail.email_configure()
+
 	if args.emailMode:
+		gmail.loadSettings()
+		logging.debug(emailSettings.__dict__)
 		if all([emailSettings.EMAIL_USERNAME is not None,
 		        emailSettings.EMAIL_PASSWORD is not None,
 		        emailSettings.EMAIL_SEND_ALERT_TO is not None]):
 			gmail.ENABLE = args.emailMode
 		else:
-			gmail.email_configure()
+			print("Please configure email alerts first (-c)")
+			sys.exit(1)
 
 	if all([args.interactive, args.single is None, not args.multi]):
 		interactive_mode.HEART_BEAT_WAIT = args.delay
@@ -188,7 +195,7 @@ class single_server_mode:
 class emailSettings():
 	EMAIL_USERNAME = None  # Should be in form (username@domain.com)
 	EMAIL_PASSWORD = None
-	EMAIL_SEND_ALERT_TO = None  # Must be a list
+	EMAIL_SEND_ALERT_TO = []  # Must be a list
 
 
 class gmail(emailSettings):
@@ -220,8 +227,6 @@ class gmail(emailSettings):
 		if os.path.isfile(globalVars.settingsFilePath):
 			with open(globalVars.settingsFilePath) as fh:
 				emailSettings.__dict__ = json.loads(fh.read())
-		else:
-			logging.warn("Settings missing, defaults set")
 
 	@staticmethod
 	def saveSettings():
@@ -230,7 +235,21 @@ class gmail(emailSettings):
 
 	@classmethod
 	def email_configure(cls):
-		pass
+		print("Enter user email (user@domain.com")
+		emailSettings.EMAIL_USERNAME = raw_input(">")
+
+		print("Enter email password")
+		emailSettings.EMAIL_PASSWORD = raw_input(">")
+
+		print("Send alerts to (press enter when done):")
+		while True:
+			user_input = raw_input(">")
+			if user_input == "":
+				break
+			emailSettings.EMAIL_SEND_ALERT_TO.append(user_input)
+
+		cls.saveSettings()
+
 
 
 class server():
