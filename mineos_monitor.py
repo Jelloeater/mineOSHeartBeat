@@ -85,12 +85,16 @@ def main():
 	if args.emailMode:
 		gmail.loadSettings()
 		logging.debug(emailSettings.__dict__)
-		if all([emailSettings.EMAIL_USERNAME is not None,
-		        emailSettings.EMAIL_PASSWORD is not None,
-		        emailSettings.EMAIL_SEND_ALERT_TO is not None]):
-			gmail.ENABLE = args.emailMode
-		else:
-			print("Please configure email alerts first (-c)")
+		try:
+			if all([emailSettings.EMAIL_USERNAME is not None,
+			        emailSettings.EMAIL_PASSWORD is not None,
+			        emailSettings.EMAIL_SEND_ALERT_TO is not None]):
+				gmail.ENABLE = args.emailMode
+			else:
+				print("Please configure email alerts first (-c)")
+				sys.exit(0)
+		except AttributeError:
+			print("Email config corrupted, please delete it and try again")
 			sys.exit(1)
 
 	if args.delay is not None:
@@ -116,7 +120,7 @@ class GlobalServer(GlobalVars):
 		status = []
 		for i in mcServers:
 			x = server(i)
-			if x.is_server_up():
+			if x.up:
 				status.append("UP")
 			else:
 				status.append("DOWN")
@@ -194,8 +198,9 @@ class single_server_mode(GlobalServer):
 		print("Press Ctrl-C to quit")
 
 		while True:
+			server(server_name).check_server()
 			try:
-				server(server_name).check_server()
+				pass
 			except RuntimeWarning:
 				print("Please enter a valid server name")
 				break
@@ -273,37 +278,30 @@ class gmail(emailSettings):
 		cls.saveSettings()
 
 
-class server():
-	# TODO Implement suggestions from https://github.com/Jelloeater/mineOSHeartBeat/issues/1#issuecomment-46856691)
-	def __init__(self, serverName, owner="mc", serverBootWait=120):
-		self.serverName = serverName
-		self.owner = owner
+class server(mc):
+	def __init__(self, server_name, serverBootWait=120):
+		super(server, self).__init__(server_name, base_directory=GlobalVars.BASE_DIRECTORY)
 		self.bootWait = serverBootWait
 
 	def check_server(self):
-		logging.info("Checking server {0}".format(self.serverName))
-
-		if self.is_server_up():
-			logging.debug("Server {0} is Up".format(self.serverName))
+		logging.info("Checking server {0}".format(self.server_name))
+		if self.up:
+			logging.debug("Server {0} is Up".format(self.server_name))
 		else:
-			logging.error("Server {0} is Down".format(self.serverName))
+			logging.error("Server {0} is Down".format(self.server_name))
 			self.start_server()
 			sleep(self.bootWait)
 
-	def is_server_up(self):
-		return mc(server_name=self.serverName, base_directory=GlobalVars.BASE_DIRECTORY).up
-
 	def start_server(self):
-		logging.info("Starting Server: " + self.serverName)
-		x = mc(self.serverName, self.owner, GlobalVars.BASE_DIRECTORY)
-		x.start()
+		logging.info("Starting Server: " + self.server_name)
+		self.start()
 		logging.info("Server Started")
 		if gmail.ENABLE:
 			try:
 				logging.debug("Debug logging should be off, so we write issues to the file, NOT the console")
 				with open(GlobalVars.LOG_FILENAME) as f:
 					log = f.read()
-					gmail.send(subject="Server " + self.serverName + " is down", text=log)  # Sends alert
+					gmail.send(subject="Server " + self.server_name + " is down", text=log)  # Sends alert
 			except IOError:
 				logging.error("Can't find the log file to send, aborting sending mail")
 
