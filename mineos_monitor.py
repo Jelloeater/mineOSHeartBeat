@@ -20,7 +20,7 @@ sys.path.append("/usr/games/minecraft")  # So we can run the script from other l
 from mineos import mc
 
 
-class globalVars():
+class GlobalVars():
 	""" Exists to solve outer scope access issues, and maybe save/load down the road"""
 	EMAIL_SETTINGS_FILE_PATH = "email-settings.json"
 	BASE_DIRECTORY = "/var/games/minecraft"
@@ -57,13 +57,13 @@ def main():
 	args = parser.parse_args()
 
 	if args.base_directory is not None:  # Because we now are relying on globalVars for defaults vs argparse
-		globalVars.BASE_DIRECTORY = args.base_directory
+		GlobalVars.BASE_DIRECTORY = args.base_directory
 
 	if args.debug:
 		logging.basicConfig(format="[%(asctime)s] [%(levelname)8s] --- %(message)s (%(filename)s:%(lineno)s)",
 		                    level=logging.DEBUG)
 	else:
-		logging.basicConfig(filename=globalVars.LOG_FILENAME,
+		logging.basicConfig(filename=GlobalVars.LOG_FILENAME,
 		                    format="[%(asctime)s] [%(levelname)8s] --- %(message)s (%(filename)s:%(lineno)s)",
 		                    level=logging.WARNING)
 
@@ -75,8 +75,8 @@ def main():
 		sys.exit(1)
 
 	if args.list:
-		print("Servers @ " + globalVars.BASE_DIRECTORY)
-		for i in mc.list_servers(globalVars.BASE_DIRECTORY):
+		print("Servers @ " + GlobalVars.BASE_DIRECTORY)
+		for i in mc.list_servers(GlobalVars.BASE_DIRECTORY):
 			print(i)
 
 	if args.configureEmailAlerts:
@@ -94,7 +94,7 @@ def main():
 			sys.exit(1)
 
 	if args.delay is not None:
-		globalVars.DELAY = args.delay
+		GlobalVars.DELAY = args.delay
 
 	logging.debug(args)
 
@@ -109,7 +109,29 @@ def main():
 		multi_server_mode.start()
 
 
-class interactive_mode(globalVars):
+class GlobalServer(GlobalVars):
+	@classmethod
+	def get_server_status_list(cls):
+		mcServers = mc.list_servers(GlobalVars.BASE_DIRECTORY)
+		status = []
+		for i in mcServers:
+			x = server(i)
+			if x.is_server_up():
+				status.append("UP")
+			else:
+				status.append("DOWN")
+		return list(zip(mcServers, status))
+
+	@classmethod
+	def server_sleep(cls):
+		try:
+			sleep(cls.DELAY)
+		except KeyboardInterrupt:
+			print("Bye Bye.")
+			sys.exit(0)
+
+
+class interactive_mode(GlobalServer):
 	MONITOR_LIST = []
 
 	@classmethod
@@ -117,7 +139,7 @@ class interactive_mode(globalVars):
 		print("Interactive Mode")
 
 		# FIXME loop logic is messy
-		mcServers = interactive_mode.get_server_status_list()
+		mcServers = cls.get_server_status_list()
 
 		checkServer = []
 		for i in mcServers:  # Generate matching t/f list
@@ -150,35 +172,22 @@ class interactive_mode(globalVars):
 			for i in cls.MONITOR_LIST:
 				server(i).check_server()
 				sleep(.5)
-			sleep(cls.DELAY)
+			cls.server_sleep()
 
 
-	@classmethod
-	def get_server_status_list(cls):
-		mcServers = mc.list_servers(globalVars.BASE_DIRECTORY)
-		status = []
-		for i in mcServers:
-			x = server(i)
-			if x.is_server_up():
-				status.append("UP")
-			else:
-				status.append("DOWN")
-		return list(zip(mcServers, status))
-
-
-class multi_server_mode(globalVars):
+class multi_server_mode(GlobalServer):
 	@classmethod
 	def start(cls):
 		print("Multi Server mode")
 		print("Press Ctrl-C to quit")
 
 		while True:
-			for i in mc.list_servers(globalVars.BASE_DIRECTORY):
+			for i in mc.list_servers(cls.BASE_DIRECTORY):
 				server(i).check_server()
-			sleep(cls.DELAY)
+			cls.server_sleep()
 
 
-class single_server_mode(globalVars):
+class single_server_mode(GlobalServer):
 	@classmethod
 	def start(cls, server_name):
 		print("Single Server Mode: " + server_name)
@@ -190,7 +199,7 @@ class single_server_mode(globalVars):
 			except RuntimeWarning:
 				print("Please enter a valid server name")
 				break
-			sleep(cls.DELAY)
+			cls.server_sleep()
 
 
 class emailSettings():
@@ -226,13 +235,13 @@ class gmail(emailSettings):
 
 	@staticmethod
 	def loadSettings():
-		if os.path.isfile(globalVars.EMAIL_SETTINGS_FILE_PATH):
-			with open(globalVars.EMAIL_SETTINGS_FILE_PATH) as fh:
+		if os.path.isfile(GlobalVars.EMAIL_SETTINGS_FILE_PATH):
+			with open(GlobalVars.EMAIL_SETTINGS_FILE_PATH) as fh:
 				emailSettings.__dict__ = json.loads(fh.read())
 
 	@staticmethod
 	def saveSettings():
-		with open(globalVars.EMAIL_SETTINGS_FILE_PATH, "w") as fh:
+		with open(GlobalVars.EMAIL_SETTINGS_FILE_PATH, "w") as fh:
 			fh.write(json.dumps(emailSettings.__dict__, sort_keys=True, indent=0))
 
 	@classmethod
@@ -282,17 +291,17 @@ class server():
 			sleep(self.bootWait)
 
 	def is_server_up(self):
-		return mc(server_name=self.serverName, base_directory=globalVars.BASE_DIRECTORY).up
+		return mc(server_name=self.serverName, base_directory=GlobalVars.BASE_DIRECTORY).up
 
 	def start_server(self):
 		logging.info("Starting Server: " + self.serverName)
-		x = mc(self.serverName, self.owner, globalVars.BASE_DIRECTORY)
+		x = mc(self.serverName, self.owner, GlobalVars.BASE_DIRECTORY)
 		x.start()
 		logging.info("Server Started")
 		if gmail.ENABLE:
 			try:
 				logging.debug("Debug logging should be off, so we write issues to the file, NOT the console")
-				with open(globalVars.LOG_FILENAME) as f:
+				with open(GlobalVars.LOG_FILENAME) as f:
 					log = f.read()
 					gmail.send(subject="Server " + self.serverName + " is down", text=log)  # Sends alert
 			except IOError:
