@@ -9,7 +9,7 @@ import argparse
 
 __author__ = "Jesse S"
 __license__ = "GNU GPL v2.0"
-__version__ = "0.6b"
+__version__ = "0.8"
 __email__ = "jelloeater@gmail.com"
 
 
@@ -19,6 +19,7 @@ from mineos import mc
 
 class Settings():
 	BASE_DIRECTORY = ""
+	LOG_FILENAME = "heartbeat.log"
 
 
 def main():
@@ -36,13 +37,19 @@ def main():
 	multi_server_group = parser.add_argument_group('Multi Server Mode')
 	multi_server_group.add_argument("-m", "--multi", help="Multi server watch mode", action="store_true")
 
-	parser.add_argument("-t", "--timeout", action="store", type=int, default=60,
+	email_group = parser.add_argument_group('E-mail Alert Mode')
+	email_group.add_argument("-e", "--emailMode", help="Enables email notification", action="store_true")
+	email_group.add_argument("-u", "--username", help="G-mail address", action="store")
+	email_group.add_argument("-p", "--password", help="G-mail password", action="store")
+	email_group.add_argument("-t", "--to", help="Send alerts here", action="store")
+
+	parser.add_argument("-d", "--delay", action="store", type=int, default=60,
 	                    help="Wait x second between checks (ex. 60)")
 
 	parser.add_argument('-b', dest='base_directory', help='MineOS Server Base Location (ex. /var/games/minecraft)',
 	                    default='/var/games/minecraft')
 	parser.add_argument("-l", "--list", action="store_true", help="List MineOS Servers")
-	parser.add_argument("-d", "--debug", action="store_true", help="Debug Logging Flag")
+	parser.add_argument("--debug", action="store_true", help="Debug Mode Logging")
 	args = parser.parse_args()
 
 	Settings.BASE_DIRECTORY = args.base_directory
@@ -51,7 +58,7 @@ def main():
 		logging.basicConfig(format="[%(asctime)s] [%(levelname)8s] --- %(message)s (%(filename)s:%(lineno)s)",
 		                    level=logging.DEBUG)
 	else:
-		logging.basicConfig(filename="heartbeat.log",
+		logging.basicConfig(filename=Settings.LOG_FILENAME,
 		                    format="[%(asctime)s] [%(levelname)8s] --- %(message)s (%(filename)s:%(lineno)s)",
 		                    level=logging.WARNING)
 
@@ -67,17 +74,23 @@ def main():
 		for i in mc.list_servers(Settings.BASE_DIRECTORY):
 			print(i)
 
+	if args.emailMode:
+		gmail.ENABLE = args.emailMode
+		gmail.EMAIL_ADDRESS = args.username
+		gmail.PASSWORD = args.password
+		gmail.SEND_ALERT_TO.append(args.to)
+
 	# TODO Implement better arg logic
 	if args.interactive and args.single is None and not args.multi:
-		interactive_mode.HEART_BEAT_WAIT = args.timeout
+		interactive_mode.HEART_BEAT_WAIT = args.delay
 		interactive_mode.start()
 
 	if args.single and not args.interactive and not args.multi:
-		single_server_mode.TIME_OUT = args.timeout
+		single_server_mode.TIME_OUT = args.delay
 		single_server_mode.start(args.single)
 
 	if args.multi and not args.interactive and args.single is None:
-		multi_server_mode.TIME_OUT = args.timeout
+		multi_server_mode.TIME_OUT = args.delay
 		multi_server_mode.start()
 
 
@@ -171,35 +184,31 @@ class single_server_mode:
 
 
 class gmail():
-	"""  Lets g-mail users send email messages. Creates a provider. """
+	""" Lets users send email messages """
 	# TODO Maybe implement other mail providers
-	def __init__(self, username, password):
-		self.__username = self.__getFromAddress(username)
-		self.__password = password
-		self.__fromAddress = self.__username
+
+	ENABLE = False
+	EMAIL_ADDRESS = ""
+	PASSWORD = ""
+	SEND_ALERT_TO = [] # Must be a list
 
 	@staticmethod
-	def __getFromAddress(username):
-		return username + "@gmail.com"
+	def send(subject, text):
+		logging.debug("Sending email")
 
-	def send(self, to, subject, text):
-		gmail_user = self.__username
-		gmail_pwd = self.__password
-		FROM = self.__fromAddress
-		TO = [to]  # must be a list
 		SUBJECT = subject
 		TEXT = text
 
 		# Prepare actual message
 		message = """\From: %s\nTo: %s\nSubject: %s\n\n%s
-            """ % (FROM, ", ".join(TO), SUBJECT, TEXT)
+            """ % (gmail.EMAIL_ADDRESS, ", ".join(gmail.SEND_ALERT_TO), SUBJECT, TEXT)
 
-		server = smtplib.SMTP("smtp.gmail.com", 587)  # or port 465 doesn't seem to work!
-		server.ehlo()
-		server.starttls()
-		server.login(gmail_user, gmail_pwd)
-		server.sendmail(FROM, TO, message)
-		server.close()
+		emailServer = smtplib.SMTP("smtp.gmail.com", 587)  # or port 465 doesn't seem to work!
+		emailServer.ehlo()
+		emailServer.starttls()
+		emailServer.login(gmail.EMAIL_ADDRESS, gmail.PASSWORD)
+		emailServer.sendmail(gmail.EMAIL_ADDRESS, gmail.SEND_ALERT_TO, message)
+		emailServer.close()
 
 
 class server():
@@ -226,7 +235,11 @@ class server():
 		x = mc(self.serverName, self.owner, Settings.BASE_DIRECTORY)
 		x.start()
 		logging.info("Server Started")
-
+		if gmail.ENABLE:
+			f = open(Settings.LOG_FILENAME)
+			log = f.read()
+			f.close()
+			gmail.send(subject="Server " + self.serverName + " is down", text=log)  # Sends alert
 
 if __name__ == "__main__":
 	main()
