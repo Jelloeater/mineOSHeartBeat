@@ -1,6 +1,7 @@
 #!/usr/bin/env python2.7
 """A python project for managing Minecraft servers hosted on MineOS (http://minecraft.codeemo.com)
 """
+import getpass
 import json
 import os
 import smtplib
@@ -20,8 +21,8 @@ from mineos import mc
 
 
 class globalVars():
-	""" Exists to solve outter scope access issues, and maybe save/load down the road"""
-	settingsFilePath = "settings.json"
+	""" Exists to solve outer scope access issues, and maybe save/load down the road"""
+	EMAIL_SETTINGS_FILE_PATH = "email-settings.json"
 	BASE_DIRECTORY = "/var/games/minecraft"
 	LOG_FILENAME = "heartbeat.log"
 
@@ -224,32 +225,42 @@ class gmail(emailSettings):
 
 	@staticmethod
 	def loadSettings():
-		if os.path.isfile(globalVars.settingsFilePath):
-			with open(globalVars.settingsFilePath) as fh:
+		if os.path.isfile(globalVars.EMAIL_SETTINGS_FILE_PATH):
+			with open(globalVars.EMAIL_SETTINGS_FILE_PATH) as fh:
 				emailSettings.__dict__ = json.loads(fh.read())
 
 	@staticmethod
 	def saveSettings():
-		with open(globalVars.settingsFilePath, "w") as fh:
+		with open(globalVars.EMAIL_SETTINGS_FILE_PATH, "w") as fh:
 			fh.write(json.dumps(emailSettings.__dict__, sort_keys=True, indent=0))
 
 	@classmethod
 	def email_configure(cls):
-		print("Enter user email (user@domain.com")
-		emailSettings.EMAIL_USERNAME = raw_input(">")
+		cls.loadSettings()
+		print("Enter user email (user@domain.com) or press enter to skip")
+		user_input = raw_input('(' + cls.EMAIL_USERNAME + ')>')
+		if user_input != "":
+			emailSettings.EMAIL_USERNAME = user_input
 
-		print("Enter email password")
-		emailSettings.EMAIL_PASSWORD = raw_input(">")
+		print("Enter email password or press enter to skip")
+		user_input = getpass.getpass(prompt='>')  # To stop shoulder surfing
+		if user_input != "":
+			emailSettings.EMAIL_PASSWORD = user_input
+
+		print("Clear alerts list? (yes/no)?")
+		user_input = raw_input(">")
+		if user_input == "yes":
+			emailSettings.EMAIL_SEND_ALERT_TO[:] = []  # Clear the list
+			print("Alerts list cleared")
 
 		print("Send alerts to (press enter when done):")
 		while True:
-			user_input = raw_input(">")
+			user_input = raw_input('(' + str(cls.EMAIL_SEND_ALERT_TO) + ')>')
 			if user_input == "":
 				break
 			emailSettings.EMAIL_SEND_ALERT_TO.append(user_input)
-
+		logging.debug(emailSettings.__dict__)
 		cls.saveSettings()
-
 
 
 class server():
