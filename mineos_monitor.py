@@ -25,9 +25,11 @@ class globalVars():
 	EMAIL_SETTINGS_FILE_PATH = "email-settings.json"
 	BASE_DIRECTORY = "/var/games/minecraft"
 	LOG_FILENAME = "heartbeat.log"
+	DELAY = 60
 
 
 def main():
+	""" Take arguments and direct program """
 	parser = argparse.ArgumentParser(description="A MineOS Server Monitor"
 	                                             " (http://github.com/jelloeater/MineOSheartbeat)",
 	                                 version=__version__,
@@ -46,7 +48,7 @@ def main():
 	email_group.add_argument("-e", "--emailMode", help="Enables email notification", action="store_true")
 	email_group.add_argument("-c", "--configureEmailAlerts", help="Configure email alerts", action="store_true")
 
-	parser.add_argument("-d", "--delay", action="store", type=int, default=60,
+	parser.add_argument("-d", "--delay", action="store", type=int,
 	                    help="Wait x second between checks (ex. 60)")
 
 	parser.add_argument('-b', dest='base_directory', help='Change MineOS Server Base Location (ex. /var/games/minecraft)')
@@ -91,22 +93,24 @@ def main():
 			print("Please configure email alerts first (-c)")
 			sys.exit(1)
 
+	if args.delay is not None:
+		globalVars.DELAY = args.delay
+
+	logging.debug(args)
+
+	# Magic starts here
 	if all([args.interactive, args.single is None, not args.multi]):
-		interactive_mode.HEART_BEAT_WAIT = args.delay
 		interactive_mode.start()
 
 	if all([args.single, not args.interactive, not args.multi]):
-		single_server_mode.TIME_OUT = args.delay
 		single_server_mode.start(args.single)
 
 	if all([args.multi, not args.interactive, args.single is None]):
-		multi_server_mode.TIME_OUT = args.delay
 		multi_server_mode.start()
 
 
-class interactive_mode():
+class interactive_mode(globalVars):
 	MONITOR_LIST = []
-	HEART_BEAT_WAIT = 5
 
 	@classmethod
 	def start(cls):
@@ -146,7 +150,7 @@ class interactive_mode():
 			for i in cls.MONITOR_LIST:
 				server(i).check_server()
 				sleep(.5)
-			sleep(cls.HEART_BEAT_WAIT)
+			sleep(cls.DELAY)
 
 
 	@classmethod
@@ -162,9 +166,7 @@ class interactive_mode():
 		return list(zip(mcServers, status))
 
 
-class multi_server_mode:
-	TIME_OUT = 60
-
+class multi_server_mode(globalVars):
 	@classmethod
 	def start(cls):
 		print("Multi Server mode")
@@ -173,12 +175,10 @@ class multi_server_mode:
 		while True:
 			for i in mc.list_servers(globalVars.BASE_DIRECTORY):
 				server(i).check_server()
-			sleep(cls.TIME_OUT)
+			sleep(cls.DELAY)
 
 
-class single_server_mode:
-	TIME_OUT = 60
-
+class single_server_mode(globalVars):
 	@classmethod
 	def start(cls, server_name):
 		print("Single Server Mode: " + server_name)
@@ -190,10 +190,11 @@ class single_server_mode:
 			except RuntimeWarning:
 				print("Please enter a valid server name")
 				break
-			sleep(cls.TIME_OUT)
+			sleep(cls.DELAY)
 
 
 class emailSettings():
+	""" Container class for load/save """
 	EMAIL_USERNAME = None  # Should be in form (username@domain.com)
 	EMAIL_PASSWORD = None
 	EMAIL_SEND_ALERT_TO = []  # Must be a list
