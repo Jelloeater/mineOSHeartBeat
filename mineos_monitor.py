@@ -91,7 +91,7 @@ def main():
 			        emailSettings.EMAIL_SEND_ALERT_TO is not None]):
 				gmail.ENABLE = args.emailMode
 			else:
-				print("Please configure email alerts first (-c)")
+				print("Please configure email alerts first (run with just -c)")
 				sys.exit(0)
 		except AttributeError:
 			print("Email config corrupted, please delete it and try again")
@@ -253,7 +253,7 @@ class gmail(emailSettings):
 	def email_configure(cls):
 		cls.loadSettings()
 		print("Enter user email (user@domain.com) or press enter to skip")
-		user_input = raw_input('(' + cls.EMAIL_USERNAME + ')>')
+		user_input = raw_input('(' + str(cls.EMAIL_USERNAME) + ')>')
 		if user_input != "":
 			emailSettings.EMAIL_USERNAME = user_input
 
