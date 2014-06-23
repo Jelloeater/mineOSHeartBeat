@@ -1,6 +1,8 @@
 #!/usr/bin/env python2.7
 """A python project for managing Minecraft servers hosted on MineOS (http://minecraft.codeemo.com)
 """
+import json
+import os
 import smtplib
 import logging
 from time import sleep
@@ -16,10 +18,28 @@ __email__ = "jelloeater@gmail.com"
 sys.path.append("/usr/games/minecraft")  # So we can run the script from other locations
 from mineos import mc
 
+settingsFilePath = "settings.json"
+
 
 class Settings():
 	BASE_DIRECTORY = ""
 	LOG_FILENAME = "heartbeat.log"
+
+
+class SettingsHelper():
+	""" Simple helper class to load and save vars in a bare settings class"""
+	@staticmethod
+	def loadSettings():
+		if os.path.isfile(settingsFilePath):
+			with open(settingsFilePath) as fh:
+				Settings.__dict__ = json.loads(fh.read())
+		else:
+			logging.warn("Settings missing, defaults set")
+
+	@staticmethod
+	def saveSettings():
+		with open(settingsFilePath, "w") as fh:
+			fh.write(json.dumps(Settings.__dict__, sort_keys=True, indent=0))
 
 
 def main():
