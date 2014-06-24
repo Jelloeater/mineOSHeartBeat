@@ -281,28 +281,25 @@ class gmail(emailSettings):
 		cls.saveSettings()
 
 
-class server():
+class server(mc):
 	def __init__(self, server_name, serverBootWait=120):
-		self.server_name = server_name
+		super(server, self).__init__(server_name, owner=GlobalVars.MINEOS_USERNAME, base_directory=GlobalVars.BASE_DIRECTORY)
 		self.bootWait = serverBootWait
 
 	def check_server(self):
 		logging.info("Checking server {0}".format(self.server_name))
 
-		if self.is_server_up():
+		if self.up:
 			logging.debug("Server {0} is Up".format(self.server_name))
 		else:
 			logging.error("Server {0} is Down".format(self.server_name))
 			self.start_server()
 			sleep(self.bootWait)
 
-	def is_server_up(self):
-		return mc(server_name=self.server_name, owner=GlobalVars.MINEOS_USERNAME, base_directory=GlobalVars.BASE_DIRECTORY).up
 
 	def start_server(self):
 		logging.info("Starting Server: " + self.server_name)
-		mc(self.server_name, owner=GlobalVars.MINEOS_USERNAME, base_directory=GlobalVars.BASE_DIRECTORY).start()
-		# self.start()  # Re implementing it causes "[error]" to display on the Web GUI when it runs
+		self.start()  # Re implementing it causes "[error]" to display on the Web GUI when it runs
 		logging.info("Server Started")
 		if gmail.ENABLE:
 			try:
