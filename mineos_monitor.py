@@ -24,7 +24,7 @@ class GlobalVars():
 	""" Exists to solve outer scope access issues, and maybe save/load down the road"""
 	BOOT_WAIT = 120
 	DELAY = 60
-	EMAIL_SETTINGS_FILE_PATH = "email-settings.json"
+	EMAIL_SETTINGS_FILE_PATH = "alerts-settings.dat"
 	BASE_DIRECTORY = "/var/games/minecraft"
 	LOG_FILENAME = "heartbeat.log"
 	MINEOS_USERNAME = "mc"
@@ -246,12 +246,16 @@ class gmail(emailSettings):
 	def loadSettings():
 		if os.path.isfile(GlobalVars.EMAIL_SETTINGS_FILE_PATH):
 			with open(GlobalVars.EMAIL_SETTINGS_FILE_PATH) as fh:
-				emailSettings.__dict__ = json.loads(fh.read())
+				rawData = fh.read()
+				rawJSON = rawData  # TODO Implement obfuscation / encryption here
+				emailSettings.__dict__ = json.loads(rawJSON)
 
 	@staticmethod
 	def saveSettings():
 		with open(GlobalVars.EMAIL_SETTINGS_FILE_PATH, "w") as fh:
-			fh.write(json.dumps(emailSettings.__dict__, sort_keys=True, indent=0))
+			rawJSON = json.dumps(emailSettings.__dict__, sort_keys=True, indent=0)
+			rawData = rawJSON  # TODO Implement obfuscation / encryption here
+			fh.write(rawData)
 
 	@classmethod
 	def email_configure(cls):
