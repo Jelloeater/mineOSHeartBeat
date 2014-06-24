@@ -22,8 +22,8 @@ from mineos import mc
 
 class GlobalVars():
 	""" Exists to solve outer scope access issues, and maybe save/load down the road"""
-	BOOT_WAIT = 10
-	DELAY = 5
+	BOOT_WAIT = 120
+	DELAY = 60
 	EMAIL_SETTINGS_FILE_PATH = "email-settings.json"
 	BASE_DIRECTORY = "/var/games/minecraft"
 	LOG_FILENAME = "heartbeat.log"
