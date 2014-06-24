@@ -186,7 +186,10 @@ class multi_server_mode(GlobalServer):
 		print("Press Ctrl-C to quit")
 
 		while True:
-			for i in mc.list_servers(cls.BASE_DIRECTORY):
+			server_list = mc.list_servers(GlobalVars.BASE_DIRECTORY)
+			logging.debug(server_list)
+
+			for i in server_list:
 				server(i).check_server()
 			cls.server_sleep()
 
