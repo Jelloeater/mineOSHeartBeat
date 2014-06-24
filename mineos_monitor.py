@@ -9,6 +9,7 @@ import logging
 from time import sleep
 import sys
 import argparse
+import base64
 
 __author__ = "Jesse S"
 __license__ = "GNU GPL v2.0"
@@ -248,6 +249,7 @@ class gmail(emailSettings):
 			with open(GlobalVars.EMAIL_SETTINGS_FILE_PATH) as fh:
 				rawJSON = gmail.decodeSettings(fh.read())
 				emailSettings.__dict__ = json.loads(rawJSON)
+				logging.debug(emailSettings.__dict__)
 
 	@staticmethod
 	def saveSettings():
@@ -256,17 +258,14 @@ class gmail(emailSettings):
 			fh.write(gmail.encodeSettings(rawJSON))
 
 	@staticmethod
-	def decodeSettings(RawData):
-		rawHEX = RawData.decode('hex')  # TODO Implement better encryption here
-		rawData = int(rawHEX, 16) / 2
-		rawJSON = str(rawData).decode('hex')
+	def decodeSettings(RawData):  # TODO Implement encryption
+		rawJSON = base64.b64decode(RawData).decode('rot13').decode('rot13').decode('hex')
 		return rawJSON
 
 	@staticmethod
 	def encodeSettings(JSONin):
-		rawData = JSONin.encode('hex')
-		rawData = str(int(rawData, 16) * 2)
-		return rawData
+		rawData = JSONin.encode('hex').encode('rot13').encode('rot13')
+		return base64.b64encode(rawData)
 
 	@classmethod
 	def email_configure(cls):
