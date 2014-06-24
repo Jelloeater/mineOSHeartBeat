@@ -12,7 +12,7 @@ import argparse
 
 __author__ = "Jesse S"
 __license__ = "GNU GPL v2.0"
-__version__ = "0.8"
+__version__ = "0.9"
 __email__ = "jelloeater@gmail.com"
 
 
