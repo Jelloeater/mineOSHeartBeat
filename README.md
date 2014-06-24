@@ -7,8 +7,10 @@ Can monitor all present servers, a single server, or be run interactively.
 For help just run with -h
 
 ### Example
-	
-```python mineos_monitor.py -s ServerNameInMineOS -e -u your@gmail.com -p yourGmailPassword -t send@alertHere.com```
+
+#### Single server w/ e-mail alerts
+	python mineos_monitor.py -c
+	python mineos_monitor.py -e -s ServerNameInMineOS 
 
 ## Dependency's
 MineOS (http://minecraft.codeemo.com)
