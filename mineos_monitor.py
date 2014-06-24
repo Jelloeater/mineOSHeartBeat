@@ -26,6 +26,7 @@ class GlobalVars():
 	BASE_DIRECTORY = "/var/games/minecraft"
 	LOG_FILENAME = "heartbeat.log"
 	DELAY = 60
+	MINEOS_USERNAME = "mc"
 
 
 def main():
@@ -175,7 +176,6 @@ class interactive_mode(GlobalServer):
 		while True:
 			for i in cls.MONITOR_LIST:
 				server(i).check_server()
-				sleep(.5)
 			cls.server_sleep()
 
 
@@ -281,23 +281,28 @@ class gmail(emailSettings):
 		cls.saveSettings()
 
 
-class server(mc):
+class server():
 	def __init__(self, server_name, serverBootWait=120):
-		super(server, self).__init__(server_name, base_directory=GlobalVars.BASE_DIRECTORY)
+		self.server_name = server_name
 		self.bootWait = serverBootWait
 
 	def check_server(self):
 		logging.info("Checking server {0}".format(self.server_name))
-		if self.up:
+
+		if self.is_server_up():
 			logging.debug("Server {0} is Up".format(self.server_name))
 		else:
 			logging.error("Server {0} is Down".format(self.server_name))
 			self.start_server()
 			sleep(self.bootWait)
 
+	def is_server_up(self):
+		return mc(server_name=self.server_name, owner=GlobalVars.MINEOS_USERNAME, base_directory=GlobalVars.BASE_DIRECTORY).up
+
 	def start_server(self):
 		logging.info("Starting Server: " + self.server_name)
-		self.start()
+		mc(self.server_name, owner=GlobalVars.MINEOS_USERNAME, base_directory=GlobalVars.BASE_DIRECTORY).start()
+		# self.start()  # Re implementing it causes "[error]" to display on the Web GUI when it runs
 		logging.info("Server Started")
 		if gmail.ENABLE:
 			try:
