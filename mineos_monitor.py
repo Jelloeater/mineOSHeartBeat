@@ -9,7 +9,9 @@ import logging
 from time import sleep
 import sys
 import argparse
-import base64
+
+import m2secret
+
 
 __author__ = "Jesse S"
 __license__ = "GNU GPL v2.0"
@@ -23,6 +25,7 @@ from mineos import mc
 
 class GlobalVars():
 	""" Exists to solve outer scope access issues, and maybe save/load down the road"""
+	EMAIL_SETTINGS_ENCRYPTION_KEY = "For the love of mike, pick a better key"
 	BOOT_WAIT = 120
 	DELAY = 60
 	EMAIL_SETTINGS_FILE_PATH = "alerts-settings.dat"
@@ -258,14 +261,17 @@ class gmail(emailSettings):
 			fh.write(gmail.encodeSettings(rawJSON))
 
 	@staticmethod
-	def decodeSettings(RawData):  # TODO Implement encryption
-		rawJSON = base64.b64decode(RawData).decode('rot13').decode('rot13').decode('hex')
-		return rawJSON
+	def decodeSettings(RawData):
+		# Not going to bother implementing encryption, this is just to keep others from shoulder surfing. Secure the file / user account
+		secret = m2secret.Secret()
+		secret.deserialize(RawData)
+		return secret.decrypt(GlobalVars.EMAIL_SETTINGS_ENCRYPTION_KEY)
 
 	@staticmethod
 	def encodeSettings(JSONin):
-		rawData = JSONin.encode('hex').encode('rot13').encode('rot13')
-		return base64.b64encode(rawData)
+		secret = m2secret.Secret()
+		secret.encrypt(cleartext=JSONin, password=GlobalVars.EMAIL_SETTINGS_ENCRYPTION_KEY)
+		return secret.serialize()
 
 	@classmethod
 	def email_configure(cls):
