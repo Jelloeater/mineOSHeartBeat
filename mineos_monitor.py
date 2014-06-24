@@ -246,16 +246,27 @@ class gmail(emailSettings):
 	def loadSettings():
 		if os.path.isfile(GlobalVars.EMAIL_SETTINGS_FILE_PATH):
 			with open(GlobalVars.EMAIL_SETTINGS_FILE_PATH) as fh:
-				rawData = fh.read()
-				rawJSON = rawData  # TODO Implement obfuscation / encryption here
+				rawJSON = gmail.decodeSettings(fh.read())
 				emailSettings.__dict__ = json.loads(rawJSON)
 
 	@staticmethod
 	def saveSettings():
 		with open(GlobalVars.EMAIL_SETTINGS_FILE_PATH, "w") as fh:
 			rawJSON = json.dumps(emailSettings.__dict__, sort_keys=True, indent=0)
-			rawData = rawJSON  # TODO Implement obfuscation / encryption here
-			fh.write(rawData)
+			fh.write(gmail.encodeSettings(rawJSON))
+
+	@staticmethod
+	def decodeSettings(RawData):
+		rawHEX = RawData.decode('hex')  # TODO Implement better encryption here
+		rawData = int(rawHEX, 16) / 2
+		rawJSON = str(rawData).decode('hex')
+		return rawJSON
+
+	@staticmethod
+	def encodeSettings(JSONin):
+		rawData = JSONin.encode('hex')
+		rawData = str(int(rawData, 16) * 2)
+		return rawData
 
 	@classmethod
 	def email_configure(cls):
