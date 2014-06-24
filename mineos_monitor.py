@@ -22,10 +22,11 @@ from mineos import mc
 
 class GlobalVars():
 	""" Exists to solve outer scope access issues, and maybe save/load down the road"""
+	BOOT_WAIT = 10
+	DELAY = 5
 	EMAIL_SETTINGS_FILE_PATH = "email-settings.json"
 	BASE_DIRECTORY = "/var/games/minecraft"
 	LOG_FILENAME = "heartbeat.log"
-	DELAY = 60
 	MINEOS_USERNAME = "mc"
 
 
@@ -121,7 +122,7 @@ class GlobalServer(GlobalVars):
 		status = []
 		for i in mcServers:
 			x = server(i)
-			if x.up:
+			if x.is_server_up():
 				status.append("UP")
 			else:
 				status.append("DOWN")
@@ -281,25 +282,29 @@ class gmail(emailSettings):
 		cls.saveSettings()
 
 
-class server(mc):
-	def __init__(self, server_name, serverBootWait=120):
-		super(server, self).__init__(server_name, owner=GlobalVars.MINEOS_USERNAME, base_directory=GlobalVars.BASE_DIRECTORY)
-		self.bootWait = serverBootWait
+class server():
+	""" A re-implemented instance of the mc class"""
+	# Yes, I want to use inheritance, but for some odd reason when I do, everything breaks :(
+	def __init__(self, server_name):
+		self.server_name = server_name
 
 	def check_server(self):
 		logging.info("Checking server {0}".format(self.server_name))
 
-		if self.up:
+		if self.is_server_up():
 			logging.debug("Server {0} is Up".format(self.server_name))
 		else:
 			logging.error("Server {0} is Down".format(self.server_name))
 			self.start_server()
-			sleep(self.bootWait)
+			sleep(GlobalVars.BOOT_WAIT)
 
+	def is_server_up(self):
+		return mc(server_name=self.server_name, owner=GlobalVars.MINEOS_USERNAME, base_directory=GlobalVars.BASE_DIRECTORY).up
 
 	def start_server(self):
 		logging.info("Starting Server: " + self.server_name)
-		self.start()  # Re implementing it causes "[error]" to display on the Web GUI when it runs
+		mc(self.server_name, owner=GlobalVars.MINEOS_USERNAME, base_directory=GlobalVars.BASE_DIRECTORY).start()
+		# self.start()  # Re implementing it causes "[error]" to display on the Web GUI when it runs
 		logging.info("Server Started")
 		if gmail.ENABLE:
 			try:
