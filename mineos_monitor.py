@@ -20,7 +20,7 @@ __email__ = "jelloeater@gmail.com"
 
 BOOT_WAIT = 120
 LOG_FILENAME = "heartbeat.log"
-USE_GMAIL = True
+
 
 def main():
     """ Take arguments and direct program """
@@ -43,6 +43,7 @@ def main():
                                     "--multi",
                                     help="Multi server watch mode",
                                     action="store_true")
+
     email_group = parser.add_argument_group('E-mail Alert Mode')
     email_group.add_argument("-e",
                              "--email_mode",
@@ -86,8 +87,12 @@ def main():
 
     if args.list:
         mode.list_servers()
-    if args.configure_email_alerts:
-        gmail().configure()
+
+    # FIXME Having issues loading config file from mineos.conf_reader :( (Temporally disabled)
+    # if args.configure_email_alerts:
+    #     gmail().configure()
+    # if args.email_mode:
+    #     server_logger.USE_GMAIL = True
 
     # Magic starts here
     if args.interactive:
@@ -219,6 +224,8 @@ class gmail(object):
 
 
 class server_logger(mc):
+    USE_GMAIL = False  # Static variable for e-mail mode
+
     def check_server(self):
         logging.info("Checking server {0}".format(self.server_name))
         logging.debug("Server {0} is {1}".format(self.server_name,
@@ -233,7 +240,7 @@ class server_logger(mc):
         logging.info("Starting Server: " + self.server_name)
         self.start()
         logging.info("Server Started")
-        if USE_GMAIL:
+        if server_logger.USE_GMAIL:
             try:
                 logging.debug("Debug logging should be off, so we write issues to the file, NOT the console")
                 with open(LOG_FILENAME) as f:
