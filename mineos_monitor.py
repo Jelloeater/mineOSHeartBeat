@@ -10,6 +10,7 @@ import sys
 import argparse
 import base64
 from time import sleep
+from conf_reader import config_file
 
 __author__ = "Jesse S"
 __license__ = "GNU GPL v2.0"
@@ -19,15 +20,9 @@ __email__ = "jelloeater@gmail.com"
 sys.path.append("/usr/games/minecraft")  # So we can run the script from other locations
 from mineos import mc
 
-class GlobalVars():
-    """ Exists to solve outer scope access issues, and maybe save/load down the road"""
-    BOOT_WAIT = 120
-    DELAY = 60
-    EMAIL_SETTINGS_FILE_PATH = "alerts-settings.dat"
-    BASE_DIRECTORY = "/var/games/minecraft"
-    LOG_FILENAME = "heartbeat.log"
-    MINEOS_USERNAME = "mc"
-
+BOOT_WAIT = 120
+LOG_FILENAME = "heartbeat.log"
+USE_GMAIL = True
 
 def main():
     """ Take arguments and direct program """
@@ -52,11 +47,11 @@ def main():
                                     action="store_true")
     email_group = parser.add_argument_group('E-mail Alert Mode')
     email_group.add_argument("-e",
-                             "--emailMode",
+                             "--email_mode",
                              help="Enables email notification",
                              action="store_true")
     email_group.add_argument("-c",
-                             "--configureEmailAlerts",
+                             "--configure_email_alerts",
                              help="Configure email alerts",
                              action="store_true")
     parser.add_argument("-d",
@@ -82,124 +77,70 @@ def main():
         logging.basicConfig(format="[%(asctime)s] [%(levelname)8s] --- %(message)s (%(filename)s:%(lineno)s)",
                             level=logging.DEBUG)
     else:
-        logging.basicConfig(filename=GlobalVars.LOG_FILENAME,
+        logging.basicConfig(filename=LOG_FILENAME,
                             format="[%(asctime)s] [%(levelname)8s] --- %(message)s (%(filename)s:%(lineno)s)",
                             level=logging.WARNING)
 
     logging.debug(sys.path)
     logging.debug(args)
 
-    if len(sys.argv) == 1:  # Displays help and lists servers
-        parser.print_help()
-        sys.exit(1)
+    mode = modes(args.base_directory, args.delay)
 
     if args.list:
-        print("Servers @ " + args.base_directory)
-        for i in mc.list_servers(args.base_directory):
-            print(i)
-
-    if args.configureEmailAlerts:
-        gmail.email_configure()
-
-    if args.emailMode:
-        gmail.loadSettings()
-        logging.debug(emailSettings.__dict__)
-        try:
-            if all([emailSettings.EMAIL_USERNAME is not None,
-                    emailSettings.EMAIL_PASSWORD is not None,
-                    emailSettings.EMAIL_SEND_ALERT_TO is not None]):
-                gmail.ENABLE = args.emailMode
-            else:
-                print("Please configure email alerts first (run with just -c)")
-                sys.exit(0)
-        except AttributeError:
-            print("Email config corrupted, please delete it and try again")
-            sys.exit(1)
-
-    if args.delay is not None:
-        args.delay = args.delay
-
-    logging.debug(args)
+        mode.list_servers()
+    if args.configure_email_alerts:
+        gmail.configure()
 
     # Magic starts here
-    if all([args.interactive, args.single is None, not args.multi]):
-        interactive_mode.start()
+    if args.interactive:
+        mode.interactive()
+    elif args.single:
+        mode.single_server()
+    elif args.multi:
+        mode.multi_server()
 
-    if all([args.single, not args.interactive, not args.multi]):
-        single_server_mode.start(args.single)
+class modes(object):
+    def __init__(self, base_directory, sleep_delay=10):
+        self.base_directory = base_directory
+        self.sleep_delay = sleep_delay
 
-    if all([args.multi, not args.interactive, args.single is None]):
-        multi_server_mode.start()
-
-
-class GlobalServer(GlobalVars):
-    @classmethod
-    def get_server_status_list(cls):
-        mcServers = mc.list_servers(args.base_directory)
-        status = []
-        for i in mcServers:
-            x = server(i)
-            if x.is_server_up():
-                status.append("UP")
-            else:
-                status.append("DOWN")
-        return list(zip(mcServers, status))
-
-    @classmethod
-    def server_sleep(cls):
+    def sleep(self):
         try:
-            sleep(cls.DELAY)
+            sleep(self.sleep_delay)
         except KeyboardInterrupt:
             print("Bye Bye.")
             sys.exit(0)
 
-
-class interactive_mode(GlobalServer):
-    MONITOR_LIST = []
-
-    @classmethod
-    def start(cls):
+    def list_servers(self):
+        print("Servers:")
+        print("{0}{1}".format("Name".ljust(20), 'State'))
+        for i in mc.list_servers(self.base_directory):
+            print "{0}{1}".format(i.ljust(20), ['down','up'][mc(i).up])
+        
+    def interactive(self):
+        servers_to_monitor = []
         print("Interactive Mode")
 
-        # FIXME loop logic is messy
-        mcServers = cls.get_server_status_list()
-
-        checkServer = []
-        for i in mcServers:  # Generate matching t/f list
-            checkServer.append(False)
-
-        serverList = list(zip(mcServers, checkServer))
-
         while True:
-            print("")
-            print("Servers:")
-            print("# \t Name \t\t UP/DOWN \t Check")
-            for i in serverList:
-                print(str(serverList.index(i)) + "\t" + str(i[0][0]) + "\t" + str(i[0][1]) + "\t" + str(i[1]))
+            self.list_servers()
+            print("\n\nCurrently Monitoring: {0}\n".format(', '.join(servers_to_monitor)))
+            print("Type name of server to monitor")
+            server_name = raw_input(">")
 
-            print("Select servers to Monitor(#) / (Done)")
-            user_input = raw_input(">")
+            if server_name:
+                servers_to_monitor.append(server_name)
 
-            if user_input.isdigit():
-                checkServer[int(user_input)] = True
-                serverList = list(zip(mcServers, checkServer))
-            # Rewrites list when values are changed (I don't feel like packing and unpacking tuples)
-            cls.MONITOR_LIST = [x[0][0] for x in serverList if x[1] is True]
-
-            if user_input == "Done" or user_input == "d" and len(cls.MONITOR_LIST) >= 1:
+            if server_name.lower() in ['done', 'd', ''] and servers_to_monitor:
                 break  # Only exits if we have work to do
 
         logging.info("Starting monitor")
 
         while True:
-            for i in cls.MONITOR_LIST:
-                server(i).check_server()
-            cls.server_sleep()
+            for i in servers_to_monitor:
+                server_logger(i).check_server()
+            self.sleep()
 
-
-class multi_server_mode(GlobalServer):
-    @classmethod
-    def start(cls):
+    def multi_server(self):
         print("Multi Server mode")
         print("Press Ctrl-C to quit")
 
@@ -208,136 +149,107 @@ class multi_server_mode(GlobalServer):
             logging.debug(server_list)
 
             for i in server_list:
-                server(i).check_server()
-            cls.server_sleep()
+                server_logger(i).check_server()
+            self.sleep()
 
-
-class single_server_mode(GlobalServer):
-    @classmethod
-    def start(cls, server_name):
+    def single_server(self, server_name):
         print("Single Server Mode: " + server_name)
         print("Press Ctrl-C to quit")
 
         while True:
-            server(server_name).check_server()
+            server_logger(server_name).check_server()
             try:
                 pass
             except RuntimeWarning:
                 print("Please enter a valid server name")
                 break
-            cls.server_sleep()
+            self.sleep()
 
+class gmail(object):
+    """
+    Lets users send email messages
 
-class emailSettings():
-    """ Container class for load/save """
-    EMAIL_USERNAME = None  # Should be in form (username@domain.com)
-    EMAIL_PASSWORD = None
-    EMAIL_SEND_ALERT_TO = []  # Must be a list
-
-
-class gmail(emailSettings):
-    """ Lets users send email messages """
     # TODO Maybe implement other mail providers
+    """
+    SETTINGS_FILE_PATH = "alerts-settings.dat"
+    SEND_ALERT_TO = []  # Must be a list
+    
+    def __init__(self):
+        self.settings = config_file(self.SETTINGS_FILE_PATH)
 
-    ENABLE = False
-
-    @classmethod
     def send(cls, subject, text):
         logging.debug("Sending email")
 
-        SUBJECT = subject
-        TEXT = text
+        message = "\From: {0}\nTo: {1}\nSubject: {2}\n\n{3}".format(self.settings['EMAIL_USERNAME'],
+                                                                    ", ".join(self.settings['EMAIL_SEND_ALERT_TO']),
+                                                                    subject,
+                                                                    text)
 
-        # Prepare actual message
-        message = """\From: %s\nTo: %s\nSubject: %s\n\n%s
-            """ % (cls.EMAIL_USERNAME, ", ".join(cls.EMAIL_SEND_ALERT_TO), SUBJECT, TEXT)
+        server = smtplib.SMTP("smtp.gmail.com", 587)  # or port 465 doesn't seem to work!
+        server.ehlo()
+        server.starttls()
+        server.login(self.settings['EMAIL_USERNAME'], self.settings['EMAIL_PASSWORD'])
+        server.sendmail(self.settings['EMAIL_USERNAME'], self.settings['EMAIL_SEND_ALERT_TO'], message)
+        server.close()
 
-        emailServer = smtplib.SMTP("smtp.gmail.com", 587)  # or port 465 doesn't seem to work!
-        emailServer.ehlo()
-        emailServer.starttls()
-        emailServer.login(cls.EMAIL_USERNAME, cls.EMAIL_PASSWORD)
-        emailServer.sendmail(cls.EMAIL_USERNAME, cls.EMAIL_SEND_ALERT_TO, message)
-        emailServer.close()
-
-    @staticmethod
-    def loadSettings():
-        if os.path.isfile(GlobalVars.EMAIL_SETTINGS_FILE_PATH):
-            with open(GlobalVars.EMAIL_SETTINGS_FILE_PATH) as fh:
-                rawJSON = gmail.decodeSettings(fh.read())
-                emailSettings.__dict__ = json.loads(rawJSON)
-                logging.debug(emailSettings.__dict__)
-
-    @staticmethod
-    def saveSettings():
-        with open(GlobalVars.EMAIL_SETTINGS_FILE_PATH, "w") as fh:
-            rawJSON = json.dumps(emailSettings.__dict__, sort_keys=True, indent=0)
-            fh.write(gmail.encodeSettings(rawJSON))
-
-    @staticmethod
-    def decodeSettings(RawData):  # TODO Implement encryption
-        rawJSON = base64.b64decode(RawData).decode('rot13').decode('rot13').decode('hex')
-        return rawJSON
-
-    @staticmethod
-    def encodeSettings(JSONin):
-        rawData = JSONin.encode('hex').encode('rot13').encode('rot13')
-        return base64.b64encode(rawData)
-
-    @classmethod
-    def email_configure(cls):
-        cls.loadSettings()
+    def configure(self):
         print("Enter user email (user@domain.com) or press enter to skip")
-        user_input = raw_input('(' + str(cls.EMAIL_USERNAME) + ')>')
-        if user_input != "":
-            emailSettings.EMAIL_USERNAME = user_input
 
+        username = raw_input('({0})>'.format(self.settings['EMAIL_USERNAME']))
+        
         print("Enter email password or press enter to skip")
-        user_input = getpass.getpass(prompt='>')  # To stop shoulder surfing
-        if user_input != "":
-            emailSettings.EMAIL_PASSWORD = user_input
+        password = getpass.getpass(prompt='>')  # To stop shoulder surfing
+        if username and password:
+            self.settings['EMAIL_USERNAME'] = username
+            self.settings['EMAIL_PASSWORD'] = password
+            self.settings.commit()
 
         print("Clear alerts list? (yes/no)?")
-        user_input = raw_input(">")
-        if user_input == "yes":
-            emailSettings.EMAIL_SEND_ALERT_TO[:] = []  # Clear the list
+        import distutils.util
+        if distutils.util.strtobool(raw_input(">")):
+            self.SEND_ALERT_TO = []  # Clear the list
             print("Alerts list cleared")
 
         print("Send alerts to (press enter when done):")
         while True:
-            user_input = raw_input('(' + str(cls.EMAIL_SEND_ALERT_TO) + ')>')
-            if user_input == "":
+            user_input = raw_input('({0})>'.format(','.join(self.SEND_ALERT_TO)))
+            if not user_input:
                 break
-            emailSettings.EMAIL_SEND_ALERT_TO.append(user_input)
-        logging.debug(emailSettings.__dict__)
-        cls.saveSettings()
+            else:
+                self.SEND_ALERT_TO.append(user_input)
 
+class server_logger(mc):
+    """
+    A re-implemented instance of the mc class
 
-class server(mc):
-    """ A re-implemented instance of the mc class"""
+    not providing __init__ means we can use the superclass' __init__ by default.
+    this class can use all functions within server_logger and mc as if they were
+    coded together in the first place
+    """
+    
     def check_server(self):
         logging.info("Checking server {0}".format(self.server_name))
-
         logging.debug("Server {0} is {1}".format(self.server_name,
                                                  ['Down', 'Up'][self.up]))
 
         if not self.up:
             self.start_server()
-            sleep(GlobalVars.BOOT_WAIT)
+            sleep(BOOT_WAIT)
 
     def start_server(self):
         logging.info("Starting Server: " + self.server_name)
         self.start()
         logging.info("Server Started")
-        if gmail.ENABLE:
+        '''if USE_GMAIL:
             try:
                 logging.debug("Debug logging should be off, so we write issues to the file, NOT the console")
-                with open(GlobalVars.LOG_FILENAME) as f:
+                with open(LOG_FILENAME) as f:
                     log = f.read()
                     gmail.send(subject="Server " + self.server_name + " is down", text=log)  # Sends alert
             except IOError:
                 logging.error("Can't find the log file to send, aborting sending mail")
+        '''
 
 if __name__ == "__main__":
-    gmail.loadSettings()
     main()
 
