@@ -163,13 +163,14 @@ class modes(object):  # Uses new style classes
                 break
             self.sleep()
 
+
 class gmail(object):
     """
     Lets users send email messages
 
     # TODO Maybe implement other mail providers
     """
-    SETTINGS_FILE_PATH = "alerts-settings.dat"
+    SETTINGS_FILE_PATH = "alerts-settings.cfg"
     SEND_ALERT_TO = []  # Must be a list
     
     def __init__(self):
@@ -228,18 +229,19 @@ class server_logger(mc):
             sleep(BOOT_WAIT)
 
     def start_server(self):
+        logging.warning(str(self.server_name) + 'has gone DOWN, restarting.')
         logging.info("Starting Server: " + self.server_name)
         self.start()
         logging.info("Server Started")
-        '''if USE_GMAIL:
+        if USE_GMAIL:
             try:
                 logging.debug("Debug logging should be off, so we write issues to the file, NOT the console")
                 with open(LOG_FILENAME) as f:
                     log = f.read()
-                    gmail.send(subject="Server " + self.server_name + " is down", text=log)  # Sends alert
+                    gmail().send(subject="Server " + self.server_name + " is down", text=log)  # Sends alert
             except IOError:
                 logging.error("Can't find the log file to send, aborting sending mail")
-        '''
+
 
 if __name__ == "__main__":
     main()
