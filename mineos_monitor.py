@@ -1,24 +1,22 @@
 #!/usr/bin/env python2.7
 """A python project for managing Minecraft servers hosted on MineOS (http://minecraft.codeemo.com)
 """
+import sys
+sys.path.append("/usr/games/minecraft")  # So we can run the script from other locations
+
 import getpass
-import json
-import os
 import smtplib
 import logging
-import sys
 import argparse
-import base64
 from time import sleep
 from conf_reader import config_file
+from mineos import mc
 
 __author__ = "Jesse S"
 __license__ = "GNU GPL v2.0"
 __version__ = "0.9"
 __email__ = "jelloeater@gmail.com"
 
-sys.path.append("/usr/games/minecraft")  # So we can run the script from other locations
-from mineos import mc
 
 BOOT_WAIT = 120
 LOG_FILENAME = "heartbeat.log"
@@ -84,22 +82,23 @@ def main():
     logging.debug(sys.path)
     logging.debug(args)
 
-    mode = modes(args.base_directory, args.delay)
+    mode = modes(args.base_directory, args.delay)  # Create new mode object for flow, I'll buy that :)
 
     if args.list:
         mode.list_servers()
     if args.configure_email_alerts:
-        gmail.configure()
+        gmail().configure()
 
     # Magic starts here
     if args.interactive:
         mode.interactive()
     elif args.single:
-        mode.single_server()
+        mode.single_server(args.single)  # Needs server name to start
     elif args.multi:
         mode.multi_server()
 
-class modes(object):
+
+class modes(object):  # Uses new style classes
     def __init__(self, base_directory, sleep_delay=10):
         self.base_directory = base_directory
         self.sleep_delay = sleep_delay
@@ -145,7 +144,7 @@ class modes(object):
         print("Press Ctrl-C to quit")
 
         while True:
-            server_list = mc.list_servers(args.base_directory)
+            server_list = mc.list_servers(self.base_directory)
             logging.debug(server_list)
 
             for i in server_list:
@@ -177,7 +176,7 @@ class gmail(object):
     def __init__(self):
         self.settings = config_file(self.SETTINGS_FILE_PATH)
 
-    def send(cls, subject, text):
+    def send(self, subject, text):
         logging.debug("Sending email")
 
         message = "\From: {0}\nTo: {1}\nSubject: {2}\n\n{3}".format(self.settings['EMAIL_USERNAME'],
