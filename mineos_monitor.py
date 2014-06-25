@@ -123,14 +123,13 @@ class modes(object):  # Uses new style classes
         while True:
             self.list_servers()
             print("\n\nCurrently Monitoring: {0}\n".format(', '.join(servers_to_monitor)))
-            print("Type name of server to monitor")
+            print("Type name of server to monitor. Enter (d/done) when finished.")
             server_name = raw_input(">")
-
-            if server_name:
-                servers_to_monitor.append(server_name)
 
             if server_name.lower() in ['done', 'd', ''] and servers_to_monitor:
                 break  # Only exits if we have work to do
+            elif server_name in mc.list_servers(self.base_directory):  # Checks if name is valid
+                servers_to_monitor.append(server_name)
 
         logging.info("Starting monitor")
 
@@ -217,15 +216,8 @@ class gmail(object):
             else:
                 self.SEND_ALERT_TO.append(user_input)
 
-class server_logger(mc):
-    """
-    A re-implemented instance of the mc class
 
-    not providing __init__ means we can use the superclass' __init__ by default.
-    this class can use all functions within server_logger and mc as if they were
-    coded together in the first place
-    """
-    
+class server_logger(mc):
     def check_server(self):
         logging.info("Checking server {0}".format(self.server_name))
         logging.debug("Server {0} is {1}".format(self.server_name,
