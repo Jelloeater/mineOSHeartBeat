@@ -6,20 +6,18 @@ import json
 import os
 import smtplib
 import logging
-from time import sleep
 import sys
 import argparse
 import base64
+from time import sleep
 
 __author__ = "Jesse S"
 __license__ = "GNU GPL v2.0"
 __version__ = "0.9"
 __email__ = "jelloeater@gmail.com"
 
-
 sys.path.append("/usr/games/minecraft")  # So we can run the script from other locations
 from mineos import mc
-
 
 class GlobalVars():
     """ Exists to solve outer scope access issues, and maybe save/load down the road"""
@@ -37,30 +35,48 @@ def main():
                                                  " (http://github.com/jelloeater/MineOSheartbeat)",
                                      version=__version__,
                                      epilog="Please specify mode (-s, -i or -m) to start monitoring")
-
     server_group = parser.add_argument_group('Single Server Mode')
-    server_group.add_argument("-s", "--single", action="store", help="Single server watch mode")
-
+    server_group.add_argument("-s",
+                              "--single",
+                              action="store",
+                              help="Single server watch mode")
     interactive_group = parser.add_argument_group('Interactive Mode')
-    interactive_group.add_argument("-i", "--interactive", help="Interactive menu mode", action="store_true")
-
+    interactive_group.add_argument("-i",
+                                   "--interactive",
+                                   help="Interactive menu mode",
+                                   action="store_true")
     multi_server_group = parser.add_argument_group('Multi Server Mode')
-    multi_server_group.add_argument("-m", "--multi", help="Multi server watch mode", action="store_true")
-
+    multi_server_group.add_argument("-m",
+                                    "--multi",
+                                    help="Multi server watch mode",
+                                    action="store_true")
     email_group = parser.add_argument_group('E-mail Alert Mode')
-    email_group.add_argument("-e", "--emailMode", help="Enables email notification", action="store_true")
-    email_group.add_argument("-c", "--configureEmailAlerts", help="Configure email alerts", action="store_true")
-
-    parser.add_argument("-d", "--delay", action="store", type=int,
+    email_group.add_argument("-e",
+                             "--emailMode",
+                             help="Enables email notification",
+                             action="store_true")
+    email_group.add_argument("-c",
+                             "--configureEmailAlerts",
+                             help="Configure email alerts",
+                             action="store_true")
+    parser.add_argument("-d",
+                        "--delay",
+                        action="store",
+                        type=int,
+                        default=60,
                         help="Wait x second between checks (ex. 60)")
-
-    parser.add_argument('-b', dest='base_directory', help='Change MineOS Server Base Location (ex. /var/games/minecraft)')
-    parser.add_argument("-l", "--list", action="store_true", help="List MineOS Servers")
-    parser.add_argument("--debug", action="store_true", help="Debug Mode Logging")
+    parser.add_argument('-b',
+                        dest='base_directory',
+                        default='/var/games/minecraft',
+                        help='Change MineOS Server Base Location (ex. /var/games/minecraft)')
+    parser.add_argument("-l",
+                        "--list",
+                        action="store_true",
+                        help="List MineOS Servers")
+    parser.add_argument("--debug",
+                        action="store_true",
+                        help="Debug Mode Logging")
     args = parser.parse_args()
-
-    if args.base_directory is not None:  # Because we now are relying on globalVars for defaults vs argparse
-        GlobalVars.BASE_DIRECTORY = args.base_directory
 
     if args.debug:
         logging.basicConfig(format="[%(asctime)s] [%(levelname)8s] --- %(message)s (%(filename)s:%(lineno)s)",
@@ -78,8 +94,8 @@ def main():
         sys.exit(1)
 
     if args.list:
-        print("Servers @ " + GlobalVars.BASE_DIRECTORY)
-        for i in mc.list_servers(GlobalVars.BASE_DIRECTORY):
+        print("Servers @ " + args.base_directory)
+        for i in mc.list_servers(args.base_directory):
             print(i)
 
     if args.configureEmailAlerts:
@@ -101,7 +117,7 @@ def main():
             sys.exit(1)
 
     if args.delay is not None:
-        GlobalVars.DELAY = args.delay
+        args.delay = args.delay
 
     logging.debug(args)
 
@@ -119,7 +135,7 @@ def main():
 class GlobalServer(GlobalVars):
     @classmethod
     def get_server_status_list(cls):
-        mcServers = mc.list_servers(GlobalVars.BASE_DIRECTORY)
+        mcServers = mc.list_servers(args.base_directory)
         status = []
         for i in mcServers:
             x = server(i)
@@ -188,7 +204,7 @@ class multi_server_mode(GlobalServer):
         print("Press Ctrl-C to quit")
 
         while True:
-            server_list = mc.list_servers(GlobalVars.BASE_DIRECTORY)
+            server_list = mc.list_servers(args.base_directory)
             logging.debug(server_list)
 
             for i in server_list:
@@ -296,29 +312,21 @@ class gmail(emailSettings):
         cls.saveSettings()
 
 
-class server():
+class server(mc):
     """ A re-implemented instance of the mc class"""
-    # Yes, I want to use inheritance, but for some odd reason when I do, everything breaks :(
-    def __init__(self, server_name):
-        self.server_name = server_name
-
     def check_server(self):
         logging.info("Checking server {0}".format(self.server_name))
 
-        if self.is_server_up():
-            logging.debug("Server {0} is Up".format(self.server_name))
-        else:
-            logging.error("Server {0} is Down".format(self.server_name))
+        logging.debug("Server {0} is {1}".format(self.server_name,
+                                                 ['Down', 'Up'][self.up]))
+
+        if not self.up:
             self.start_server()
             sleep(GlobalVars.BOOT_WAIT)
 
-    def is_server_up(self):
-        return mc(server_name=self.server_name, owner=GlobalVars.MINEOS_USERNAME, base_directory=GlobalVars.BASE_DIRECTORY).up
-
     def start_server(self):
         logging.info("Starting Server: " + self.server_name)
-        mc(self.server_name, owner=GlobalVars.MINEOS_USERNAME, base_directory=GlobalVars.BASE_DIRECTORY).start()
-        # self.start()  # Re implementing it causes "[error]" to display on the Web GUI when it runs
+        self.start()
         logging.info("Server Started")
         if gmail.ENABLE:
             try:
@@ -328,7 +336,6 @@ class server():
                     gmail.send(subject="Server " + self.server_name + " is down", text=log)  # Sends alert
             except IOError:
                 logging.error("Can't find the log file to send, aborting sending mail")
-
 
 if __name__ == "__main__":
     gmail.loadSettings()
