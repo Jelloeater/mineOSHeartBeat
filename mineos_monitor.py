@@ -104,6 +104,11 @@ def main():
         gmail().configure()
     if args.email_mode:
         server_logger.USE_GMAIL = True
+        print("E-mail notifications enabled")
+
+    if args.email_mode and args.debug:
+        logging.critical("Debug mode and e-mail notifications are mutually exclusive")
+        sys.exit(1)
 
     # Magic starts here
     if args.interactive:
@@ -289,7 +294,6 @@ class server_logger(mc):
         logging.info("Server Started")
         if server_logger.USE_GMAIL:
             try:
-                logging.debug("Debug logging should be off, so we write issues to the file, NOT the console")
                 with open(LOG_FILENAME) as f:
                     log = f.read()
                     gmail().send(subject="Server " + self.server_name + " is down", text=log)  # Sends alert
