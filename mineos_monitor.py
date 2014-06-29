@@ -1,19 +1,20 @@
 #!/usr/bin/env python2.7
 """A python project for managing Minecraft servers hosted on MineOS (http://minecraft.codeemo.com)
 """
-import json
-import os
+
 import sys
-from keyring import core as keyring
+from keyring.errors import PasswordDeleteError
 
 sys.path.append("/usr/games/minecraft")  # So we can run the script from other locations
 
+import json
+import os
+import keyring
 import getpass
 import smtplib
 import logging
 import argparse
 from time import sleep
-from conf_reader import config_file
 from mineos import mc
 
 __author__ = "Jesse S"
@@ -57,6 +58,11 @@ def main():
                              "--configure_email_alerts",
                              help="Configure email alerts",
                              action="store_true")
+    email_group.add_argument("-r",
+                             "--remove_password_store",
+                             help="Removes password stored in system keyring",
+                             action="store_true")
+
     parser.add_argument("-d",
                         "--delay",
                         action="store",
@@ -79,23 +85,23 @@ def main():
     if args.debug:
         logging.basicConfig(format="[%(asctime)s] [%(levelname)8s] --- %(message)s (%(filename)s:%(lineno)s)",
                             level=logging.DEBUG)
+        logging.debug(sys.path)
+        logging.debug(args)
+        print("")
     else:
         logging.basicConfig(filename=LOG_FILENAME,
                             format="[%(asctime)s] [%(levelname)8s] --- %(message)s (%(filename)s:%(lineno)s)",
                             level=logging.WARNING)
-
-    logging.debug(sys.path)
-    logging.debug(args)
 
     mode = modes(args.base_directory, args.delay)  # Create new mode object for flow, I'll buy that :)
 
     if args.list:
         mode.list_servers()
 
-    # FIXME Having issues loading config file from mineos.conf_reader :( (Temporally disabled)
+    if args.remove_password_store:
+        gmail().clear_password_store()
     if args.configure_email_alerts:
-        c = gmail()
-        c.configure()
+        gmail().configure()
     if args.email_mode:
         server_logger.USE_GMAIL = True
 
@@ -188,8 +194,13 @@ class SettingsHelper(gmailSettings):
     @classmethod
     def loadSettings(cls):
         if os.path.isfile(cls.SETTINGS_FILE_PATH):
-            with open(cls.SETTINGS_FILE_PATH) as fh:
-                gmailSettings.__dict__ = json.loads(fh.read())
+            try:
+                with open(cls.SETTINGS_FILE_PATH) as fh:
+                    gmailSettings.__dict__ = json.loads(fh.read())
+            except ValueError:
+                logging.error("Settings file has been corrupted, reverting to defaults")
+                os.remove(cls.SETTINGS_FILE_PATH)
+        logging.debug("Settings Loaded")
 
     @classmethod
     def saveSettings(cls):
@@ -226,9 +237,11 @@ class gmail(object, SettingsHelper):
         username = raw_input('({0})>'.format(self.USERNAME))
         
         print("Enter email password or press enter to skip")
-        password = getpass.getpass(prompt='>')  # To stop shoulder surfing
-        if username and password:
+        password = getpass.getpass(
+            prompt='>')  # To stop shoulder surfing
+        if username:
             gmailSettings.USERNAME = username
+        if password:
             keyring.set_password(self.KEYRING_APP_ID, self.USERNAME, password)
 
         print("Clear alerts list? (yes/no)?")
@@ -247,8 +260,14 @@ class gmail(object, SettingsHelper):
                 break
             else:
                 gmailSettings.SEND_ALERT_TO.append(user_input)
-
         self.saveSettings()
+
+    def clear_password_store(self):
+        try:
+            keyring.delete_password(self.KEYRING_APP_ID, self.USERNAME)
+            print("Password removed from Keyring")
+        except PasswordDeleteError:
+            logging.error("Password cannot be deleted or already has been removed")
 
 
 class server_logger(mc):
