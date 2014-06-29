@@ -4,6 +4,8 @@
 import json
 import os
 import sys
+from keyring import core as keyring
+
 sys.path.append("/usr/games/minecraft")  # So we can run the script from other locations
 
 import getpass
@@ -91,10 +93,11 @@ def main():
         mode.list_servers()
 
     # FIXME Having issues loading config file from mineos.conf_reader :( (Temporally disabled)
-    # if args.configure_email_alerts:
-    #     gmail().configure()
-    # if args.email_mode:
-    #     server_logger.USE_GMAIL = True
+    if args.configure_email_alerts:
+        c = gmail()
+        c.configure()
+    if args.email_mode:
+        server_logger.USE_GMAIL = True
 
     # Magic starts here
     if args.interactive:
@@ -170,16 +173,17 @@ class modes(object):  # Uses new style classes
                 break
             self.sleep()
 
-## Config file (save/load recpie)
+
 class gmailSettings():
     """ Container class for load/save """
     USERNAME = ""
-    PASSWORD = ""
+    # Password should be stored with keyring
     SEND_ALERT_TO = []  # Must be a list
 
 
 class SettingsHelper(gmailSettings):
     SETTINGS_FILE_PATH = "settings.json"
+    KEYRING_APP_ID = 'mineOSHeartBeat'
 
     @classmethod
     def loadSettings(cls):
@@ -191,13 +195,15 @@ class SettingsHelper(gmailSettings):
     def saveSettings(cls):
         with open(cls.SETTINGS_FILE_PATH, "w") as fh:
             fh.write(json.dumps(gmailSettings.__dict__, sort_keys=True, indent=0))
+        logging.debug("Settings Saved")
 
 
 class gmail(object, SettingsHelper):
     """ Lets users send email messages """
     # TODO Maybe implement other mail providers
     def __init__(self):
-        SettingsHelper.loadSettings()
+        self.loadSettings()
+        self.PASSWORD = keyring.get_password(self.KEYRING_APP_ID,self.USERNAME)  # Loads password from secure storage
 
     def send(self, subject, text):
         logging.debug("Sending email")
@@ -222,14 +228,17 @@ class gmail(object, SettingsHelper):
         print("Enter email password or press enter to skip")
         password = getpass.getpass(prompt='>')  # To stop shoulder surfing
         if username and password:
-            self.USERNAME = username
-            self.PASSWORD = password
+            gmailSettings.USERNAME = username
+            keyring.set_password(self.KEYRING_APP_ID, self.USERNAME, password)
 
         print("Clear alerts list? (yes/no)?")
         import distutils.util
-        if distutils.util.strtobool(raw_input(">")):
-            self.SEND_ALERT_TO = []  # Clear the list
-            print("Alerts list cleared")
+        try:
+            if distutils.util.strtobool(raw_input(">")):
+                gmailSettings.SEND_ALERT_TO = []  # Clear the list
+                print("Alerts list cleared")
+        except ValueError:
+            pass
 
         print("Send alerts to (press enter when done):")
         while True:
@@ -237,7 +246,7 @@ class gmail(object, SettingsHelper):
             if not user_input:
                 break
             else:
-                self.SEND_ALERT_TO.append(user_input)
+                gmailSettings.SEND_ALERT_TO.append(user_input)
 
         self.saveSettings()
 
