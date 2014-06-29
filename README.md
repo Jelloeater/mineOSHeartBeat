@@ -14,3 +14,4 @@ For help just run with -h
 
 ## Dependency's
 MineOS (http://minecraft.codeemo.com)
+Keyring (https://bitbucket.org/kang/python-keyring-lib) (included)
