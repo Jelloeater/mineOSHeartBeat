@@ -1,6 +1,8 @@
 #!/usr/bin/env python2.7
 """A python project for managing Minecraft servers hosted on MineOS (http://minecraft.codeemo.com)
 """
+import json
+import os
 import sys
 sys.path.append("/usr/games/minecraft")  # So we can run the script from other locations
 
@@ -168,45 +170,60 @@ class modes(object):  # Uses new style classes
                 break
             self.sleep()
 
-
-class gmail(object):
-    """
-    Lets users send email messages
-
-    # TODO Maybe implement other mail providers
-    """
-    SETTINGS_FILE_PATH = "alerts-settings.cfg"
+## Config file (save/load recpie)
+class gmailSettings():
+    """ Container class for load/save """
+    USERNAME = ""
+    PASSWORD = ""
     SEND_ALERT_TO = []  # Must be a list
-    
+
+
+class SettingsHelper(gmailSettings):
+    SETTINGS_FILE_PATH = "settings.json"
+
+    @classmethod
+    def loadSettings(cls):
+        if os.path.isfile(cls.SETTINGS_FILE_PATH):
+            with open(cls.SETTINGS_FILE_PATH) as fh:
+                gmailSettings.__dict__ = json.loads(fh.read())
+
+    @classmethod
+    def saveSettings(cls):
+        with open(cls.SETTINGS_FILE_PATH, "w") as fh:
+            fh.write(json.dumps(gmailSettings.__dict__, sort_keys=True, indent=0))
+
+
+class gmail(object, SettingsHelper):
+    """ Lets users send email messages """
+    # TODO Maybe implement other mail providers
     def __init__(self):
-        self.settings = config_file(self.SETTINGS_FILE_PATH)
+        SettingsHelper.loadSettings()
 
     def send(self, subject, text):
         logging.debug("Sending email")
 
-        message = "\From: {0}\nTo: {1}\nSubject: {2}\n\n{3}".format(self.settings['EMAIL_USERNAME'],
-                                                                    ", ".join(self.settings['EMAIL_SEND_ALERT_TO']),
+        message = "\From: {0}\nTo: {1}\nSubject: {2}\n\n{3}".format(self.USERNAME,
+                                                                    ", ".join(self.SEND_ALERT_TO),
                                                                     subject,
                                                                     text)
 
         server = smtplib.SMTP("smtp.gmail.com", 587)  # or port 465 doesn't seem to work!
         server.ehlo()
         server.starttls()
-        server.login(self.settings['EMAIL_USERNAME'], self.settings['EMAIL_PASSWORD'])
-        server.sendmail(self.settings['EMAIL_USERNAME'], self.settings['EMAIL_SEND_ALERT_TO'], message)
+        server.login(self.USERNAME, self.PASSWORD)
+        server.sendmail(self.USERNAME, self.SEND_ALERT_TO, message)
         server.close()
 
     def configure(self):
         print("Enter user email (user@domain.com) or press enter to skip")
 
-        username = raw_input('({0})>'.format(self.settings['EMAIL_USERNAME']))
+        username = raw_input('({0})>'.format(self.USERNAME))
         
         print("Enter email password or press enter to skip")
         password = getpass.getpass(prompt='>')  # To stop shoulder surfing
         if username and password:
-            self.settings['EMAIL_USERNAME'] = username
-            self.settings['EMAIL_PASSWORD'] = password
-            self.settings.commit()
+            self.USERNAME = username
+            self.PASSWORD = password
 
         print("Clear alerts list? (yes/no)?")
         import distutils.util
@@ -221,6 +238,8 @@ class gmail(object):
                 break
             else:
                 self.SEND_ALERT_TO.append(user_input)
+
+        self.saveSettings()
 
 
 class server_logger(mc):
