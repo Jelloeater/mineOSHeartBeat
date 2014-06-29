@@ -290,6 +290,8 @@ class server_logger(mc):
     def start_server(self):
         logging.warning(str(self.server_name) + 'has gone DOWN, restarting.')
         logging.info("Starting Server: " + self.server_name)
+
+        # FIXME Server start error RuntimeWarning
         self.start()
         logging.info("Server Started")
         if server_logger.USE_GMAIL:
