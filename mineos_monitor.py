@@ -267,9 +267,6 @@ class gmail(object, SettingsHelper):
     def __init__(self):
         self.loadSettings()
         self.PASSWORD = keyring.get_password(self.KEYRING_APP_ID, self.USERNAME)  # Loads password from secure storage
-        if self.PASSWORD is None:
-            print("E-mail password cannot be blank, please configure with -c")
-            logging.error("Blank E-mail password")
 
     def test_login(self):
         try:
