@@ -112,6 +112,7 @@ def main():
         gmail().clear_password_store()
     if args.configure_email_alerts:
         gmail().configure()
+
     if args.email_mode:
         server_logger.USE_GMAIL = True
         print("E-mail notifications enabled")
@@ -259,6 +260,15 @@ class SettingsHelper(gmailSettings):
         logging.debug("Settings Saved")
 
 
+class BlankPassword(BaseException):
+    def __init__(self):
+        pass
+
+    def __str__(self):
+        logging.error("Blank password in keyring")
+        return "E-mail password cannot be blank, please configure with -c"
+
+
 class gmail(object, SettingsHelper):
     """ Lets users send email messages """
     # TODO Maybe implement other mail providers
@@ -266,8 +276,7 @@ class gmail(object, SettingsHelper):
         self.loadSettings()
         self.PASSWORD = keyring.get_password(self.KEYRING_APP_ID, self.USERNAME)  # Loads password from secure storage
         if self.PASSWORD is None:
-            print("Password cannot be blank")
-            sys.exit(1)
+            raise BlankPassword
 
     def test_login(self):
         try:
@@ -294,7 +303,6 @@ class gmail(object, SettingsHelper):
         server.sendmail(self.USERNAME, self.SEND_ALERT_TO, message)
         server.close()
         logging.info("Message Sent")
-
 
     def configure(self):
         print("Enter user email (user@domain.com) or press enter to skip")
