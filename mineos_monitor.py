@@ -3,23 +3,24 @@
 """
 
 import sys
-from keyring.errors import PasswordDeleteError
-
-sys.path.append("/usr/games/minecraft")  # So we can run the script from other locations
-
-import json
 import os
-import keyring
+import json
 import getpass
 import smtplib
 import logging
 import argparse
 from time import sleep
+
+sys.path.append("/usr/games/minecraft")  # So we can run the script from other locations
+sys.path.append(os.getcwd() + '/keyring')  # Strange path issue, only appears when run from local console, not IDE
+
+import keyring
+from keyring.errors import PasswordDeleteError
 from mineos import mc
 
 __author__ = "Jesse S"
 __license__ = "GNU GPL v2.0"
-__version__ = "0.9"
+__version__ = "1.0"
 __email__ = "jelloeater@gmail.com"
 
 
@@ -186,6 +187,7 @@ class modes(object):  # Uses new style classes
         print("Press Ctrl-C to quit")
 
         while True:
+            logging.debug(self.owner)
             server_logger(server_name=server_name, owner=self.owner, base_directory=self.base_directory).check_server()
             try:
                 pass
@@ -205,7 +207,11 @@ class server_logger(mc):
 
         if not self.up:
             self.start_server()
-            sleep(BOOT_WAIT)
+            try:
+                sleep(BOOT_WAIT)
+            except KeyboardInterrupt:
+                print("Someone is hasty. You should wait for the server to reboot next time.")
+                sys.exit(1)
 
     def start_server(self):
         logging.warning(str(self.server_name) + 'has gone DOWN, restarting.')
@@ -251,28 +257,45 @@ class SettingsHelper(gmailSettings):
         logging.debug("Settings Saved")
 
 
+class BlankPassword(BaseException):
+    def __init__(self):
+        pass
+
+    def __str__(self):
+        logging.error("Blank password in keyring")
+        return "E-mail password cannot be blank"
+
+
 class gmail(object, SettingsHelper):
     """ Lets users send email messages """
     # TODO Maybe implement other mail providers
     def __init__(self):
         self.loadSettings()
-        self.PASSWORD = keyring.get_password(self.KEYRING_APP_ID,self.USERNAME)  # Loads password from secure storage
+        self.PASSWORD = keyring.get_password(self.KEYRING_APP_ID, self.USERNAME)  # Loads password from secure storage
+        if self.PASSWORD is None:
+            raise BlankPassword
 
     def send(self, subject, text):
-        logging.debug("Sending email")
+        logging.info("Sending email")
+        print("email sent")
+        print(self.USERNAME)
+        print(self.PASSWORD)
 
         message = "\From: {0}\nTo: {1}\nSubject: {2}\n\n{3}".format(self.USERNAME,
                                                                     ", ".join(self.SEND_ALERT_TO),
                                                                     subject,
                                                                     text)
 
-        server = smtplib.SMTP("smtp.gmail.com", 587)  # or port 465 doesn't seem to work!
-        server.ehlo()
-        server.starttls()
-        server.login(self.USERNAME, self.PASSWORD)
-        server.sendmail(self.USERNAME, self.SEND_ALERT_TO, message)
-        server.close()
-        print("Message Sent")
+        try:
+            server = smtplib.SMTP("smtp.gmail.com", 587)  # or port 465 doesn't seem to work!
+            server.ehlo()
+            server.starttls()
+            server.login(self.USERNAME, self.PASSWORD)
+            server.sendmail(self.USERNAME, self.SEND_ALERT_TO, message)
+            server.close()
+            logging.info("Message Sent")
+        except smtplib.SMTPAuthenticationError:
+            logging.error("Username password mismatch")
 
     def configure(self):
         print("Enter user email (user@domain.com) or press enter to skip")
