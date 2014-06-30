@@ -115,6 +115,7 @@ def main():
     if args.email_mode:
         server_logger.USE_GMAIL = True
         print("E-mail notifications enabled")
+        gmail().test_login()  # Test email, this way the user knows immediately if there is a issue
 
     if args.email_mode and args.debug:
         logging.critical("Debug mode and e-mail notifications are mutually exclusive")
@@ -223,7 +224,8 @@ class server_logger(mc):
             try:
                 with open(LOG_FILENAME) as f:
                     log = f.read()
-                    gmail().send(subject="Server " + self.server_name + " is down", text=log)  # Sends alert
+                    gmail().send(subject="Server " + self.server_name + " is down", text=log)  # Create gmail obj
+
             except IOError:
                 logging.error("Can't find the log file to send, aborting sending mail")
 
@@ -257,15 +259,6 @@ class SettingsHelper(gmailSettings):
         logging.debug("Settings Saved")
 
 
-class BlankPassword(BaseException):
-    def __init__(self):
-        pass
-
-    def __str__(self):
-        logging.error("Blank password in keyring")
-        return "E-mail password cannot be blank"
-
-
 class gmail(object, SettingsHelper):
     """ Lets users send email messages """
     # TODO Maybe implement other mail providers
@@ -273,29 +266,35 @@ class gmail(object, SettingsHelper):
         self.loadSettings()
         self.PASSWORD = keyring.get_password(self.KEYRING_APP_ID, self.USERNAME)  # Loads password from secure storage
         if self.PASSWORD is None:
-            raise BlankPassword
+            print("Password cannot be blank")
+            sys.exit(1)
 
-    def send(self, subject, text):
-        logging.info("Sending email")
-        print("email sent")
-        print(self.USERNAME)
-        print(self.PASSWORD)
-
-        message = "\From: {0}\nTo: {1}\nSubject: {2}\n\n{3}".format(self.USERNAME,
-                                                                    ", ".join(self.SEND_ALERT_TO),
-                                                                    subject,
-                                                                    text)
-
+    def test_login(self):
         try:
             server = smtplib.SMTP("smtp.gmail.com", 587)  # or port 465 doesn't seem to work!
             server.ehlo()
             server.starttls()
             server.login(self.USERNAME, self.PASSWORD)
-            server.sendmail(self.USERNAME, self.SEND_ALERT_TO, message)
             server.close()
-            logging.info("Message Sent")
         except smtplib.SMTPAuthenticationError:
-            logging.error("Username password mismatch")
+            print("Username password mismatch")
+            sys.exit(1)
+
+    def send(self, subject, text):
+        message = "\From: {0}\nTo: {1}\nSubject: {2}\n\n{3}".format(self.USERNAME,
+                                                                    ", ".join(self.SEND_ALERT_TO),
+                                                                    subject,
+                                                                    text)
+
+        logging.info("Sending email")
+        server = smtplib.SMTP("smtp.gmail.com", 587)  # or port 465 doesn't seem to work!
+        server.ehlo()
+        server.starttls()
+        server.login(self.USERNAME, self.PASSWORD)
+        server.sendmail(self.USERNAME, self.SEND_ALERT_TO, message)
+        server.close()
+        logging.info("Message Sent")
+
 
     def configure(self):
         print("Enter user email (user@domain.com) or press enter to skip")
