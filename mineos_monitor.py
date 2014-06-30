@@ -120,9 +120,10 @@ def main():
 
 
 class modes(object):  # Uses new style classes
-    def __init__(self, base_directory, sleep_delay=10):
-        self.base_directory = base_directory
+    def __init__(self, base_directory, owner="mc", sleep_delay=60):
+        self.base_directory_m = base_directory
         self.sleep_delay = sleep_delay
+        self.owner = owner
 
     def sleep(self):
         try:
@@ -134,7 +135,7 @@ class modes(object):  # Uses new style classes
     def list_servers(self):
         print("Servers:")
         print("{0}{1}".format("Name".ljust(20), 'State'))
-        for i in mc.list_servers(self.base_directory):
+        for i in mc.list_servers(self.base_directory_m):
             print "{0}{1}".format(i.ljust(20), ['down','up'][mc(i).up])
         
     def interactive(self):
@@ -149,14 +150,14 @@ class modes(object):  # Uses new style classes
 
             if server_name.lower() in ['done', 'd', ''] and servers_to_monitor:
                 break  # Only exits if we have work to do
-            elif server_name in mc.list_servers(self.base_directory):  # Checks if name is valid
+            elif server_name in mc.list_servers(self.base_directory_m):  # Checks if name is valid
                 servers_to_monitor.append(server_name)
 
         logging.info("Starting monitor")
 
         while True:
             for i in servers_to_monitor:
-                server_logger(i).check_server()
+                server_logger(server_name=i, owner=self.owner, base_directory=self.base_directory_m).check_server()
             self.sleep()
 
     def multi_server(self):
@@ -164,11 +165,11 @@ class modes(object):  # Uses new style classes
         print("Press Ctrl-C to quit")
 
         while True:
-            server_list = mc.list_servers(self.base_directory)
+            server_list = mc.list_servers(self.base_directory_m)
             logging.debug(server_list)
 
             for i in server_list:
-                server_logger(i).check_server()
+                server_logger(server_name=i, owner=self.owner, base_directory=self.base_directory_m).check_server()
             self.sleep()
 
     def single_server(self, server_name):
@@ -176,7 +177,7 @@ class modes(object):  # Uses new style classes
         print("Press Ctrl-C to quit")
 
         while True:
-            server_logger(server_name).check_server()
+            server_logger(server_name=server_name, owner=self.owner, base_directory=self.base_directory_m).check_server()
             try:
                 pass
             except RuntimeWarning:
@@ -235,6 +236,7 @@ class gmail(object, SettingsHelper):
         server.login(self.USERNAME, self.PASSWORD)
         server.sendmail(self.USERNAME, self.SEND_ALERT_TO, message)
         server.close()
+        print("Message Sent")
 
     def configure(self):
         print("Enter user email (user@domain.com) or press enter to skip")
@@ -292,7 +294,8 @@ class server_logger(mc):
         logging.info("Starting Server: " + self.server_name)
 
         # FIXME Server start error RuntimeWarning
-        self.start()
+        print(self._base_directory)
+        mc(self.server_name, self._base_directory).start()
         logging.info("Server Started")
         if server_logger.USE_GMAIL:
             try:
