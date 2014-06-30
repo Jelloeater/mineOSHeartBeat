@@ -116,7 +116,8 @@ def main():
     if args.email_mode:
         server_logger.USE_GMAIL = True
         print("E-mail notifications enabled")
-        gmail().test_login()  # Test email, this way the user knows immediately if there is a issue
+        gmail().test_login()
+        # Test email, this way the user knows immediately if there is a issue
 
     if args.email_mode and args.debug:
         logging.critical("Debug mode and e-mail notifications are mutually exclusive")
@@ -260,15 +261,6 @@ class SettingsHelper(gmailSettings):
         logging.debug("Settings Saved")
 
 
-class BlankPassword(BaseException):
-    def __init__(self):
-        pass
-
-    def __str__(self):
-        logging.error("Blank password in keyring")
-        return "E-mail password cannot be blank, please configure with -c"
-
-
 class gmail(object, SettingsHelper):
     """ Lets users send email messages """
     # TODO Maybe implement other mail providers
@@ -276,7 +268,8 @@ class gmail(object, SettingsHelper):
         self.loadSettings()
         self.PASSWORD = keyring.get_password(self.KEYRING_APP_ID, self.USERNAME)  # Loads password from secure storage
         if self.PASSWORD is None:
-            raise BlankPassword
+            print("E-mail password cannot be blank, please configure with -c")
+            logging.error("Blank E-mail password")
 
     def test_login(self):
         try:
