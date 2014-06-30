@@ -100,6 +100,10 @@ def main():
     mode = modes(base_directory=args.base_directory, owner=args.owner, sleep_delay=args.delay)
     # Create new mode object for flow, I'll buy that :)
 
+    if len(sys.argv) == 1:  # Displays help and lists servers (to help first time users)
+        parser.print_help()
+        sys.exit(1)
+
     if args.list:
         mode.list_servers()
 
